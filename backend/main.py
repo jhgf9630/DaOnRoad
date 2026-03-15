@@ -1,18 +1,26 @@
 """
-DaOnRoad - 버스 노선 최적화 시스템
-FastAPI Backend
+DaOnRoad - FastAPI Backend
 """
 import os
 from pathlib import Path
 
-# .env 파일 자동 로드
+# ── .env 로드 (모든 import보다 먼저) ────────────────────────────
 _env_path = Path(__file__).parent / ".env"
 if _env_path.exists():
-    for line in _env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
+    for _line in _env_path.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ[_k.strip()] = _v.strip()   # setdefault → 직접 set
+    print(f"[main] .env 로드 완료")
+else:
+    print(f"[main] .env 없음 — 환경변수에서 API 키 사용")
+
+# ── API 키 확인 로그 ─────────────────────────────────────────────
+_kakao = os.environ.get("KAKAO_API_KEY", "")
+_tmap  = os.environ.get("TMAP_API_KEY",  "")
+print(f"[main] KAKAO_API_KEY: {'✅ 설정됨 (' + _kakao[:6] + '...)' if _kakao else '❌ 없음'}")
+print(f"[main] TMAP_API_KEY:  {'✅ 설정됨' if _tmap else '❌ 없음'}")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,11 +28,7 @@ from api.upload import router as upload_router
 from api.routing import router as routing_router
 from api.export import router as export_router
 
-app = FastAPI(
-    title="DaOnRoad API",
-    description="DaOnRoad - 버스 노선 최적화 시스템",
-    version="1.0.0"
-)
+app = FastAPI(title="DaOnRoad API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +40,7 @@ app.add_middleware(
 
 app.include_router(upload_router, prefix="/api", tags=["upload"])
 app.include_router(routing_router, prefix="/api", tags=["routing"])
-app.include_router(export_router, prefix="/api", tags=["export"])
+app.include_router(export_router,  prefix="/api", tags=["export"])
 
 
 @app.get("/")
@@ -46,7 +50,14 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "DaOnRoad"}
+    kakao = bool(os.environ.get("KAKAO_API_KEY"))
+    tmap  = bool(os.environ.get("TMAP_API_KEY"))
+    return {
+        "status": "ok",
+        "service": "DaOnRoad",
+        "kakao_key": kakao,
+        "tmap_key": tmap
+    }
 
 
 if __name__ == "__main__":

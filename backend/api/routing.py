@@ -48,12 +48,23 @@ async def search_address(body: Dict[str, Any]):
     query 문자열로 주소/장소 후보 목록 반환
     응답: [{lat, lng, address, name, type, category?}, ...]
     """
+    import os
     query = body.get("query", "").strip()
-    limit = int(body.get("limit", 5))
+    limit = int(body.get("limit", 6))
     if not query:
         raise HTTPException(400, "query 필드가 필요합니다.")
 
+    kakao_key = os.environ.get("KAKAO_API_KEY", "").strip()
+    tmap_key  = os.environ.get("TMAP_API_KEY",  "").strip()
+
+    print(f"[search-address] query='{query}' kakao={'있음' if kakao_key else '없음'}")
+
+    if not kakao_key and not tmap_key:
+        raise HTTPException(503,
+            "API 키가 설정되지 않았습니다. backend/.env에 KAKAO_API_KEY를 추가하세요.")
+
     results = geocoder.search(query, limit=limit)
+    print(f"[search-address] 결과 {len(results)}건")
     return {"results": results, "count": len(results)}
 
 

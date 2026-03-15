@@ -379,7 +379,10 @@ class AddressSearch {
     const input=document.getElementById(`ai_${this.id}`);
     const query=input?.value?.trim();
     if(!query){return;}
-    if(!S.online){toast('백엔드에 연결되지 않았습니다.','error');return;}
+    if(!S.online){
+      await checkApi();
+      if(!S.online){toast('백엔드에 연결되지 않았습니다.','error');return;}
+    }
 
     const dd=document.getElementById(`dd_${this.id}`);
     dd.innerHTML='<div class="search-loading">🔍 검색 중...</div>';
@@ -388,12 +391,19 @@ class AddressSearch {
     try{
       const r=await fetch(`${API}/search-address`,{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({query,limit:6}),signal:AbortSignal.timeout(6000)
+        body:JSON.stringify({query,limit:6}),signal:AbortSignal.timeout(8000)
       });
       const d=await r.json();
+      console.log('[검색]', query, '->', d);
+      if(!r.ok){
+        const msg=d.detail||'검색 실패';
+        dd.innerHTML=`<div class="search-no-result">⚠️ ${msg}</div>`;
+        return;
+      }
       this._renderResults(d.results||[]);
     }catch(e){
-      dd.innerHTML='<div class="search-no-result">검색 실패. 백엔드 연결을 확인하세요.</div>';
+      console.error('[검색 오류]', e);
+      dd.innerHTML=`<div class="search-no-result">검색 실패: ${e.message}<br><small style="color:#445566">백엔드 터미널에서 오류를 확인하세요.</small></div>`;
     }
   }
 
