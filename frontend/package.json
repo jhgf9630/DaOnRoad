@@ -1,0 +1,34 @@
+{
+  "name": "daonroad",
+  "version": "1.0.0",
+  "description": "DaOnRoad - 버스 노선 최적화 시스템",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.daonroad.app",
+    "productName": "DaOnRoad",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/DaOnRoad.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/DaOnRoad.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/DaOnRoad.ico"
+    }
+  }
+}

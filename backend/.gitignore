@@ -1,0 +1,7 @@
+*.exe
+*.zip
+.DS_Store
+L-Benefit-win32-x64/
+L-Benefit.zip
+node_modules/
+dist/

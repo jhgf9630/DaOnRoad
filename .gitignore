@@ -1,0 +1,17 @@
+# 가상 환경 (Python)
+venv/
+.venv/
+env/
+
+# 의존성 폴더 (Node.js)
+node_modules/
+
+# 빌드 결과물 및 실행 파일
+dist/
+build/
+*.exe
+*.dll
+
+# OS 설정 파일
+.DS_Store
+Thumbs.db
