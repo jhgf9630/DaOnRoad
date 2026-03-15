@@ -1,191 +1,194 @@
 """
-Excel Export 모듈
-Sheet1: Bus Summary / Sheet2: Route / Sheet3: Passenger
+DaOnRoad - Excel Export
+Sheet1: Bus Summary / Sheet2: Route Detail / Sheet3: Passenger
 """
 import io
 from typing import List, Dict, Any, Optional
 from openpyxl import Workbook
-from openpyxl.styles import (Font, PatternFill, Alignment, Border, Side,
-                              GradientFill)
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-# 버스별 색상 팔레트
 BUS_COLORS = [
-    "4472C4", "ED7D31", "A9D18E", "FF0000", "7030A0",
-    "00B0F0", "FFFF00", "92D050", "00B050", "FF7F50"
+    "4472C4","ED7D31","70AD47","FF0000","7030A0",
+    "00B0F0","FFC000","92D050","00B050","FF7F50"
 ]
-
 HEADER_FILL = PatternFill(start_color="1F3864", end_color="1F3864", fill_type="solid")
 HEADER_FONT = Font(color="FFFFFF", bold=True, size=11)
-ALT_ROW_FILL = PatternFill(start_color="F2F7FF", end_color="F2F7FF", fill_type="solid")
+ALT_FILL    = PatternFill(start_color="EEF3FF", end_color="EEF3FF", fill_type="solid")
 
+def _border():
+    s = Side(style='thin', color="BBBBBB")
+    return Border(left=s, right=s, top=s, bottom=s)
 
-def thin_border():
-    thin = Side(style='thin', color="CCCCCC")
-    return Border(left=thin, right=thin, top=thin, bottom=thin)
+def _hcenter(cell):
+    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+def _set_col_widths(ws, widths):
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
 
 
 class ExcelExporter:
     def export(self, routes: List[Dict], destination: Dict,
                summary: Optional[Dict] = None) -> bytes:
         wb = Workbook()
-
-        self._write_summary_sheet(wb, routes, destination, summary)
-        self._write_route_sheet(wb, routes)
-        self._write_passenger_sheet(wb, routes)
-
+        self._summary_sheet(wb, routes, destination, summary)
+        self._route_sheet(wb, routes, destination)
+        self._passenger_sheet(wb, routes)
         buf = io.BytesIO()
         wb.save(buf)
         return buf.getvalue()
 
-    def _write_summary_sheet(self, wb, routes, destination, summary):
+    # ── Sheet 1: Bus Summary ─────────────────────────────────
+    def _summary_sheet(self, wb, routes, destination, summary):
         ws = wb.active
         ws.title = "Bus Summary"
+        ws.row_dimensions[1].height = 28
 
-        # 제목
         ws.merge_cells("A1:G1")
-        ws["A1"] = "🚌 버스 노선 최적화 결과"
-        ws["A1"].font = Font(size=16, bold=True, color="1F3864")
-        ws["A1"].alignment = Alignment(horizontal="center")
+        ws["A1"] = "🚌  DaOnRoad — 버스 노선 최적화 결과"
+        ws["A1"].font = Font(size=15, bold=True, color="1F3864")
+        ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
 
-        # 행사장 정보
-        ws["A2"] = f"행사장: {destination.get('address', '')}  |  도착 목표시간: {destination.get('arrival_time', '')}"
-        ws["A2"].font = Font(size=11, italic=True, color="595959")
         ws.merge_cells("A2:G2")
+        ws["A2"] = (f"도착지: {destination.get('address','')}   "
+                    f"|   도착 목표: {destination.get('arrival_time','')}")
+        ws["A2"].font = Font(size=10, italic=True, color="595959")
+        _hcenter(ws["A2"])
 
-        # 요약 정보
         if summary:
-            ws["A3"] = (f"총 승객: {summary.get('total_passengers', 0)}명  |  "
-                        f"버스 {summary.get('total_buses', 0)}대 운행  |  "
-                        f"총 이동: {summary.get('total_duration_min', 0)}분")
-            ws["A3"].font = Font(size=10, color="595959")
             ws.merge_cells("A3:G3")
+            ws["A3"] = (f"총 승객 {summary.get('total_passengers',0)}명  |  "
+                        f"버스 {summary.get('total_buses',0)}대")
+            ws["A3"].font = Font(size=10, color="595959")
+            _hcenter(ws["A3"])
 
-        ws.append([])  # 빈 행
+        ws.append([])
 
-        # 헤더
-        headers = ["버스ID", "출발지", "도착지", "출발시간", "도착시간", "소요시간(분)", "총 탑승인원"]
-        ws.append(headers)
-        header_row = ws.max_row
-        for col_idx, h in enumerate(headers, 1):
-            cell = ws.cell(row=header_row, column=col_idx)
-            cell.fill = HEADER_FILL
-            cell.font = HEADER_FONT
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = thin_border()
+        hdrs = ["버스ID","출발지","도착지","출발시간","도착시간","소요(분)","탑승인원"]
+        ws.append(hdrs)
+        hr = ws.max_row
+        for c in range(1, len(hdrs)+1):
+            cell = ws.cell(hr, c)
+            cell.fill = HEADER_FILL; cell.font = HEADER_FONT
+            _hcenter(cell); cell.border = _border()
 
-        # 데이터
         for i, route in enumerate(routes):
-            vehicle = route.get('vehicle', {})
+            v   = route.get('vehicle', {})
             row = [
-                route.get('bus_id', ''),
-                vehicle.get('start_location', ''),
-                vehicle.get('end_location', vehicle.get('start_location', '')),
-                route.get('departure_time', ''),
-                route.get('arrival_time', ''),
+                route.get('bus_id',''),
+                v.get('start_location',''),
+                destination.get('address',''),
+                route.get('departure_time',''),
+                route.get('arrival_time',''),
                 route.get('total_duration_min', 0),
-                route.get('total_passengers', 0)
+                route.get('total_passengers', 0),
             ]
             ws.append(row)
-            data_row = ws.max_row
-            bus_color = BUS_COLORS[i % len(BUS_COLORS)]
-            fill = PatternFill(start_color=bus_color, end_color=bus_color, fill_type="solid") if i % 2 == 0 else ALT_ROW_FILL
-            for col_idx in range(1, len(row) + 1):
-                cell = ws.cell(row=data_row, column=col_idx)
-                cell.alignment = Alignment(horizontal="center")
-                cell.border = thin_border()
-                # 버스ID 셀 색상
-                if col_idx == 1:
-                    cell.fill = PatternFill(start_color=bus_color, end_color=bus_color, fill_type="solid")
+            dr = ws.max_row
+            bc = BUS_COLORS[i % len(BUS_COLORS)]
+            for c in range(1, len(row)+1):
+                cell = ws.cell(dr, c)
+                _hcenter(cell); cell.border = _border()
+                if c == 1:
+                    cell.fill = PatternFill(start_color=bc, end_color=bc, fill_type="solid")
                     cell.font = Font(color="FFFFFF", bold=True)
-                elif i % 2 == 0:
-                    cell.fill = ALT_ROW_FILL
+                elif i % 2 == 1:
+                    cell.fill = ALT_FILL
 
-        # 컬럼 너비
-        col_widths = [12, 20, 20, 12, 12, 14, 14]
-        for col_idx, width in enumerate(col_widths, 1):
-            ws.column_dimensions[get_column_letter(col_idx)].width = width
+        _set_col_widths(ws, [12,22,28,12,12,10,12])
 
-    def _write_route_sheet(self, wb, routes):
+    # ── Sheet 2: Route Detail ────────────────────────────────
+    def _route_sheet(self, wb, routes, destination):
         ws = wb.create_sheet("Route Detail")
 
-        headers = ["버스ID", "순서", "탑승지", "주소", "탑승시간", "탑승인원", "구분"]
-        ws.append(headers)
-        header_row = ws.max_row
-        for col_idx, h in enumerate(headers, 1):
-            cell = ws.cell(row=header_row, column=col_idx)
-            cell.fill = HEADER_FILL
-            cell.font = HEADER_FONT
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = thin_border()
+        hdrs = ["버스ID","픽업순서","이름","탑승주소","탑승시간","탑승인원","비고"]
+        ws.append(hdrs)
+        hr = ws.max_row
+        for c in range(1, len(hdrs)+1):
+            cell = ws.cell(hr, c)
+            cell.fill = HEADER_FILL; cell.font = HEADER_FONT
+            _hcenter(cell); cell.border = _border()
 
         for i, route in enumerate(routes):
-            bus_color = BUS_COLORS[i % len(BUS_COLORS)]
+            bc = BUS_COLORS[i % len(BUS_COLORS)]
+            pickup_seq = 0
+
             for stop in route.get('stops', []):
-                if stop['type'] not in ('pickup', 'destination'):
+                stype = stop.get('type','')
+                if stype not in ('pickup', 'destination'):
                     continue
-                row = [
-                    route.get('bus_id', ''),
-                    stop.get('order', '') + 1 if isinstance(stop.get('order'), int) else '',
-                    stop.get('name', ''),
-                    stop.get('address', '행사장'),
-                    stop.get('pickup_time', ''),
-                    stop.get('passenger_count', '') if stop['type'] == 'pickup' else '',
-                    "탑승" if stop['type'] == 'pickup' else "도착"
-                ]
+
+                if stype == 'pickup':
+                    pickup_seq += 1
+                    row = [
+                        route.get('bus_id',''),
+                        pickup_seq,
+                        stop.get('name',''),
+                        stop.get('address',''),
+                        stop.get('pickup_time',''),
+                        stop.get('passenger_count', 0),
+                        "탑승",
+                    ]
+                else:  # destination
+                    row = [
+                        route.get('bus_id',''),
+                        "",
+                        "▶ 도착지",
+                        destination.get('address', stop.get('address','')),
+                        stop.get('pickup_time', route.get('arrival_time','')),
+                        "",
+                        "도착",
+                    ]
+
                 ws.append(row)
-                data_row = ws.max_row
-                for col_idx in range(1, len(row) + 1):
-                    cell = ws.cell(row=data_row, column=col_idx)
-                    cell.alignment = Alignment(horizontal="center")
-                    cell.border = thin_border()
-                    if col_idx == 1:
-                        cell.fill = PatternFill(start_color=bus_color, end_color=bus_color, fill_type="solid")
+                dr = ws.max_row
+                for c in range(1, len(row)+1):
+                    cell = ws.cell(dr, c)
+                    _hcenter(cell); cell.border = _border()
+                    if c == 1:
+                        cell.fill = PatternFill(start_color=bc, end_color=bc, fill_type="solid")
                         cell.font = Font(color="FFFFFF", bold=True)
-                    elif data_row % 2 == 0:
-                        cell.fill = ALT_ROW_FILL
+                    elif stype == 'destination':
+                        cell.fill = PatternFill(start_color="FFE0E0", end_color="FFE0E0", fill_type="solid")
+                    elif dr % 2 == 0:
+                        cell.fill = ALT_FILL
 
-        col_widths = [12, 8, 20, 30, 12, 10, 8]
-        for col_idx, width in enumerate(col_widths, 1):
-            ws.column_dimensions[get_column_letter(col_idx)].width = width
+        _set_col_widths(ws, [12, 10, 18, 35, 12, 10, 8])
 
-    def _write_passenger_sheet(self, wb, routes):
+    # ── Sheet 3: Passenger ───────────────────────────────────
+    def _passenger_sheet(self, wb, routes):
         ws = wb.create_sheet("Passenger")
 
-        headers = ["이름", "버스ID", "탑승지", "탑승시간", "탑승인원"]
-        ws.append(headers)
-        header_row = ws.max_row
-        for col_idx, h in enumerate(headers, 1):
-            cell = ws.cell(row=header_row, column=col_idx)
-            cell.fill = HEADER_FILL
-            cell.font = HEADER_FONT
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = thin_border()
+        hdrs = ["이름","버스ID","탑승주소","탑승시간","탑승인원"]
+        ws.append(hdrs)
+        hr = ws.max_row
+        for c in range(1, len(hdrs)+1):
+            cell = ws.cell(hr, c)
+            cell.fill = HEADER_FILL; cell.font = HEADER_FONT
+            _hcenter(cell); cell.border = _border()
 
         for i, route in enumerate(routes):
-            bus_color = BUS_COLORS[i % len(BUS_COLORS)]
+            bc = BUS_COLORS[i % len(BUS_COLORS)]
             for stop in route.get('stops', []):
-                if stop['type'] != 'pickup':
+                if stop.get('type') != 'pickup':
                     continue
                 row = [
-                    stop.get('name', ''),
-                    route.get('bus_id', ''),
-                    stop.get('address', ''),
-                    stop.get('pickup_time', ''),
-                    stop.get('passenger_count', 1)
+                    stop.get('name',''),
+                    route.get('bus_id',''),
+                    stop.get('address',''),
+                    stop.get('pickup_time',''),
+                    stop.get('passenger_count', 1),
                 ]
                 ws.append(row)
-                data_row = ws.max_row
-                for col_idx in range(1, len(row) + 1):
-                    cell = ws.cell(row=data_row, column=col_idx)
-                    cell.alignment = Alignment(horizontal="center")
-                    cell.border = thin_border()
-                    if col_idx == 2:
-                        cell.fill = PatternFill(start_color=bus_color, end_color=bus_color, fill_type="solid")
+                dr = ws.max_row
+                for c in range(1, len(row)+1):
+                    cell = ws.cell(dr, c)
+                    _hcenter(cell); cell.border = _border()
+                    if c == 2:
+                        cell.fill = PatternFill(start_color=bc, end_color=bc, fill_type="solid")
                         cell.font = Font(color="FFFFFF", bold=True)
-                    elif data_row % 2 == 0:
-                        cell.fill = ALT_ROW_FILL
+                    elif dr % 2 == 0:
+                        cell.fill = ALT_FILL
 
-        col_widths = [20, 12, 35, 12, 10]
-        for col_idx, width in enumerate(col_widths, 1):
-            ws.column_dimensions[get_column_letter(col_idx)].width = width
+        _set_col_widths(ws, [20, 12, 38, 12, 10])

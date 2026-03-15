@@ -7,100 +7,108 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: #0f0f1a; color: #e0e0e0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:#0f0f1a; color:#e0e0e0; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 
 /* ── 헤더 ── */
-.header { background: linear-gradient(135deg,#1a1a3e,#2d2d6b); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #4444aa; flex-shrink:0; }
+.header { background:linear-gradient(135deg,#1a1a3e,#2d2d6b); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #4444aa; flex-shrink:0; }
 .header-left { display:flex; align-items:center; gap:12px; }
 .header-logo { font-size:20px; font-weight:900; letter-spacing:1px; background:linear-gradient(135deg,#7eb3ff,#aa88ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 .header-sub { font-size:11px; color:#556688; border-left:1px solid #2a2a5a; padding-left:12px; }
-.api-status-bar { display:flex; align-items:center; gap:8px; font-size:11px; }
-.api-dot { width:8px; height:8px; border-radius:50%; background:#444; transition:background .5s; flex-shrink:0; }
+.api-bar { display:flex; align-items:center; gap:8px; font-size:11px; }
+.api-dot { width:8px; height:8px; border-radius:50%; background:#444; transition:background .4s; flex-shrink:0; }
 .api-dot.online  { background:#22cc77; box-shadow:0 0 6px #22cc7788; }
 .api-dot.offline { background:#cc4466; box-shadow:0 0 6px #cc446688; }
-.api-dot.loading { background:#ffaa33; animation:pulse 1s infinite; }
-.api-label { color:#8899bb; }
-.api-label.online  { color:#22cc77; }
-.api-label.offline { color:#cc4466; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.api-dot.loading { background:#ffaa33; animation:blink 1s infinite; }
+.api-lbl { color:#8899bb; }
+.api-lbl.online  { color:#22cc77; }
+.api-lbl.offline { color:#cc4466; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
 
-/* ── 메인 레이아웃 ── */
+/* ── 레이아웃 ── */
 .main { display:flex; flex:1; overflow:hidden; }
-
-/* ── 사이드바 ── */
 .sidebar { width:370px; background:#12122a; border-right:1px solid #2a2a4a; display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0; }
 .panel { padding:14px 16px; border-bottom:1px solid #1e1e3a; }
-.panel-title { font-size:12px; font-weight:bold; color:#7eb3ff; margin-bottom:10px; display:flex; align-items:center; gap:6px; letter-spacing:.5px; }
+.panel-title { font-size:12px; font-weight:bold; color:#7eb3ff; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
 .step-badge { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; color:#fff; background:#5533ee; flex-shrink:0; }
 
 /* ── 폼 ── */
-.form-group { margin-bottom:9px; }
-label { display:block; font-size:11px; color:#8899bb; margin-bottom:4px; }
-input[type="text"], input[type="number"], input[type="time"], select {
-  width:100%; padding:7px 10px; background:#1a1a30; border:1px solid #333360; border-radius:6px;
-  color:#e0e0e0; font-size:12px; transition:border-color .2s;
+.fg { margin-bottom:8px; }
+.fg:last-child { margin-bottom:0; }
+label { display:block; font-size:11px; color:#8899bb; margin-bottom:3px; }
+input[type=text],input[type=number],input[type=time],select {
+  width:100%; padding:7px 10px; background:#1a1a30; border:1px solid #333360;
+  border-radius:6px; color:#e0e0e0; font-size:12px; transition:border-color .2s;
 }
-input:focus, select:focus { outline:none; border-color:#5577ff; background:#1e1e3a; }
+input:focus,select:focus { outline:none; border-color:#5577ff; background:#1e1e3a; }
 input::placeholder { color:#445566; }
 
 /* ── 버튼 ── */
 .btn { padding:8px 14px; border:none; border-radius:7px; cursor:pointer; font-size:12px; font-weight:bold; transition:all .2s; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
-.btn:disabled { opacity:.4; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
 .btn-primary { background:linear-gradient(135deg,#3355ee,#5533ee); color:#fff; width:100%; padding:10px; font-size:13px; }
 .btn-primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 16px rgba(80,100,255,.4); }
 .btn-success { background:linear-gradient(135deg,#1a9955,#22bb66); color:#fff; }
-.btn-success:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 3px 12px rgba(34,187,102,.3); }
+.btn-success:hover:not(:disabled) { transform:translateY(-1px); }
 .btn-outline { background:transparent; border:1px solid #334466; color:#8899bb; }
-.btn-outline:hover { border-color:#7eb3ff; color:#7eb3ff; background:rgba(126,179,255,.05); }
-.btn-icon { background:none; border:none; cursor:pointer; padding:3px 6px; border-radius:4px; color:#cc4466; font-size:13px; }
-.btn-icon:hover { background:rgba(204,68,102,.15); }
+.btn-outline:hover { border-color:#7eb3ff; color:#7eb3ff; }
+.btn-xs { padding:3px 8px; font-size:10px; border-radius:5px; }
 
 /* ── 드롭존 ── */
-.dropzone { border:2px dashed #2a2a5a; border-radius:10px; padding:18px; text-align:center; cursor:pointer; transition:all .3s; color:#556677; }
-.dropzone:hover, .dropzone.drag-over { border-color:#5577ff; color:#7eb3ff; background:rgba(85,119,255,.05); }
-.dropzone-icon { font-size:26px; margin-bottom:6px; }
-.dropzone-hint { font-size:10px; color:#445566; margin-top:4px; }
+.dropzone { border:2px dashed #2a2a5a; border-radius:10px; padding:16px; text-align:center; cursor:pointer; transition:all .3s; color:#556677; }
+.dropzone:hover,.dropzone.drag-over { border-color:#5577ff; color:#7eb3ff; background:rgba(85,119,255,.05); }
 .dropzone.loaded { border-color:#1a8855; background:rgba(26,136,85,.05); color:#22cc77; }
+.dz-icon { font-size:24px; margin-bottom:5px; }
+.dz-hint { font-size:10px; color:#445566; margin-top:3px; }
 
-/* ── 백엔드 오프라인 배너 ── */
-.offline-banner { background:#2e1015; border:1px solid #aa2244; border-radius:8px; padding:10px 12px; margin-bottom:0; font-size:11px; color:#ff6688; display:none; line-height:1.6; }
-.offline-banner.show { display:block; }
-.offline-banner code { background:#1a0a10; padding:1px 5px; border-radius:3px; font-family:monospace; color:#ff99aa; }
+/* ── 테이블 ── */
+.mini-tbl { width:100%; font-size:10px; border-collapse:collapse; }
+.mini-tbl th { background:#1a1a38; padding:4px 6px; color:#7eb3ff; border-bottom:1px solid #2a2a4a; position:sticky; top:0; text-align:center; }
+.mini-tbl td { padding:3px 6px; border-bottom:1px solid #191928; text-align:center; color:#ccc; }
+.mini-tbl tr:hover td { background:#1a1a38; }
+.ok  { color:#22cc77; } .fail { color:#cc4466; }
 
-/* ── 미니 테이블 ── */
-.passenger-preview { max-height:150px; overflow-y:auto; margin-top:8px; }
-.mini-table { width:100%; font-size:10px; border-collapse:collapse; }
-.mini-table th { background:#1a1a38; padding:4px 6px; color:#7eb3ff; border-bottom:1px solid #2a2a4a; position:sticky; top:0; text-align:center; }
-.mini-table td { padding:3px 6px; border-bottom:1px solid #191928; text-align:center; color:#ccc; }
-.mini-table tr:hover td { background:#1a1a38; }
-.badge-ok { color:#22cc77; } .badge-fail { color:#cc4466; }
-
-/* ── 차량 ── */
-.vehicle-list { display:flex; flex-direction:column; gap:5px; }
-.vehicle-item { background:#191930; border:1px solid #252545; border-radius:8px; padding:8px 10px; display:flex; align-items:center; gap:8px; }
+/* ── 차량 목록 ── */
+.v-list { display:flex; flex-direction:column; gap:5px; }
+.v-item { background:#191930; border:1px solid #252545; border-radius:8px; padding:7px 10px; display:flex; align-items:center; gap:8px; }
+.v-item.editing { border-color:#5577ff; background:#1a1a38; }
 .bus-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-.vehicle-info { flex:1; }
-.vehicle-name { font-size:12px; font-weight:bold; color:#aabbee; }
-.vehicle-detail { font-size:10px; color:#556677; margin-top:1px; }
-.vehicle-add-row { display:grid; grid-template-columns:1fr 80px 70px; gap:6px; margin-bottom:8px; }
+.v-info { flex:1; }
+.v-name { font-size:12px; font-weight:bold; color:#aabbee; }
+.v-detail { font-size:10px; color:#556677; margin-top:1px; }
+.v-actions { display:flex; gap:4px; }
+.btn-edit { background:none; border:none; cursor:pointer; padding:3px 5px; border-radius:4px; color:#7eb3ff; font-size:12px; }
+.btn-edit:hover { background:rgba(126,179,255,.15); }
+.btn-del  { background:none; border:none; cursor:pointer; padding:3px 5px; border-radius:4px; color:#cc4466; font-size:12px; }
+.btn-del:hover  { background:rgba(204,68,102,.15); }
+
+/* ── 차량 편집 인라인 폼 ── */
+.v-edit-form { background:#1a1a38; border:1px solid #5577ff; border-radius:8px; padding:10px; margin-top:4px; }
+.v-edit-row { display:grid; grid-template-columns:1fr 80px; gap:6px; margin-bottom:6px; }
+.v-edit-btns { display:flex; gap:6px; }
 
 /* ── 진행 ── */
 .progress-bar { height:5px; background:#1a1a38; border-radius:3px; overflow:hidden; }
 .progress-fill { height:100%; background:linear-gradient(90deg,#4466ff,#9944ff,#ff44aa); transition:width .6s; border-radius:3px; }
 .step-list { display:flex; flex-direction:column; gap:5px; margin-top:8px; }
 .step-row { display:flex; align-items:center; gap:8px; font-size:11px; color:#4a5a7a; }
-.step-row.done { color:#22cc77; } .step-row.active { color:#7eb3ff; font-weight:bold; }
+.step-row.done   { color:#22cc77; }
+.step-row.active { color:#7eb3ff; font-weight:bold; }
 
 /* ── 요약 카드 ── */
-.summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.sum-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
 .sum-card { background:#191930; border:1px solid #252545; border-radius:9px; padding:10px; text-align:center; }
 .sum-val { font-size:20px; font-weight:bold; color:#7eb3ff; line-height:1; }
 .sum-lbl { font-size:10px; color:#556677; margin-top:4px; }
 
+/* ── 오프라인 배너 ── */
+.off-banner { background:#2e1015; border:1px solid #aa2244; border-radius:8px; padding:10px 12px; font-size:11px; color:#ff6688; line-height:1.7; display:none; }
+.off-banner.show { display:block; }
+.off-banner code { background:#1a0a10; padding:1px 5px; border-radius:3px; font-family:monospace; color:#ff99aa; }
+
 /* ── 노선 탭 ── */
 .route-panel { background:#0d0d20; border-top:1px solid #1e1e3a; flex-shrink:0; }
-.route-tabs-bar { display:flex; align-items:center; gap:5px; padding:6px 12px; overflow-x:auto; scrollbar-width:none; }
-.route-tabs-bar::-webkit-scrollbar { display:none; }
+.rtabs { display:flex; align-items:center; gap:5px; padding:6px 12px; overflow-x:auto; scrollbar-width:none; }
+.rtabs::-webkit-scrollbar { display:none; }
 .rtab { padding:4px 12px; border-radius:20px; font-size:11px; font-weight:bold; cursor:pointer; border:1px solid #2a2a4a; white-space:nowrap; transition:all .2s; color:#667788; background:#161628; }
 .rtab:hover { border-color:#5577ff; color:#aabbee; }
 .rtab.active { color:#fff; border-color:transparent !important; }
@@ -109,26 +117,26 @@ input::placeholder { color:#445566; }
 .map-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 #map { flex:1; }
 
-/* ── 팝업 ── */
-.leaflet-popup-content-wrapper { background:#1a1a38 !important; border:1px solid #334466 !important; color:#dde8ff !important; border-radius:10px !important; box-shadow:0 4px 20px rgba(0,0,0,.6) !important; }
-.leaflet-popup-tip { background:#1a1a38 !important; }
-.popup-name { font-size:13px; font-weight:bold; color:#7eb3ff; margin-bottom:5px; }
-.popup-row { font-size:11px; margin:2px 0; color:#aabbcc; }
-.popup-time { color:#44dd88; font-size:13px; font-weight:bold; }
-.popup-bus { font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; color:#fff; display:inline-block; margin-bottom:4px; }
+/* ── Leaflet 팝업 ── */
+.leaflet-popup-content-wrapper { background:#1a1a38!important; border:1px solid #334466!important; color:#dde8ff!important; border-radius:10px!important; box-shadow:0 4px 20px rgba(0,0,0,.6)!important; }
+.leaflet-popup-tip { background:#1a1a38!important; }
+.pop-name { font-size:13px; font-weight:bold; color:#7eb3ff; margin-bottom:4px; }
+.pop-row  { font-size:11px; margin:2px 0; color:#aabbcc; }
+.pop-time { color:#44dd88; font-size:13px; font-weight:bold; }
+.pop-bus  { font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; color:#fff; display:inline-block; margin-bottom:4px; }
 
 /* ── 토스트 ── */
-.toast { position:fixed; bottom:20px; right:20px; padding:11px 18px; border-radius:10px; font-size:12px; z-index:9999; max-width:320px; animation:toastIn .3s ease; pointer-events:none; line-height:1.5; }
+.toast { position:fixed; bottom:20px; right:20px; padding:11px 18px; border-radius:10px; font-size:12px; z-index:9999; max-width:320px; animation:tIn .3s ease; pointer-events:none; line-height:1.5; white-space:pre-line; }
 .toast.success { background:#0d2e1a; border:1px solid #22aa66; color:#55ff99; }
 .toast.error   { background:#2e0d14; border:1px solid #aa2244; color:#ff6688; }
 .toast.info    { background:#0d1a2e; border:1px solid #2255aa; color:#55aaff; }
 .toast.warn    { background:#2e220d; border:1px solid #aa7722; color:#ffcc55; }
-@keyframes toastIn { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes tIn { from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1} }
 
 /* ── 로딩 ── */
-.loading-overlay { position:fixed; inset:0; background:rgba(5,5,15,.8); display:none; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(3px); }
-.loading-overlay.show { display:flex; }
-.loading-box { text-align:center; color:#7eb3ff; }
+.lov { position:fixed; inset:0; background:rgba(5,5,15,.8); display:none; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(3px); }
+.lov.show { display:flex; }
+.lbox { text-align:center; color:#7eb3ff; }
 .spinner { width:48px; height:48px; border:3px solid #1e1e40; border-top:3px solid #7eb3ff; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 14px; }
 @keyframes spin { to{transform:rotate(360deg)} }
 
@@ -140,598 +148,583 @@ input::placeholder { color:#445566; }
 </head>
 <body>
 
-<!-- 헤더 -->
 <div class="header">
   <div class="header-left">
     <div class="header-logo">DaOnRoad</div>
     <div class="header-sub">버스 노선 최적화 시스템</div>
   </div>
-  <div class="api-status-bar">
+  <div class="api-bar">
     <div class="api-dot loading" id="apiDot"></div>
-    <span class="api-label" id="apiLabel">백엔드 시작 중...</span>
-    <button class="btn btn-outline" style="padding:3px 10px;font-size:10px" onclick="checkApi()">재연결</button>
+    <span class="api-lbl" id="apiLbl">백엔드 시작 중...</span>
+    <button class="btn btn-outline btn-xs" onclick="checkApi()">재연결</button>
   </div>
 </div>
 
 <div class="main">
-  <!-- ══ 사이드바 ══ -->
-  <div class="sidebar">
+<div class="sidebar">
 
-    <!-- 오프라인 배너 (숨김→표시) -->
-    <div class="panel" id="offlineBannerWrap" style="display:none; padding:10px 14px;">
-      <div class="offline-banner show" id="offlineBanner">
-        ⚠️ <b>백엔드 서버에 연결할 수 없습니다.</b><br>
-        아래 명령어로 백엔드를 실행해 주세요:<br>
-        <code>cd backend</code><br>
-        <code>python main.py</code>
-      </div>
+  <!-- 오프라인 배너 -->
+  <div class="panel" id="offWrap" style="display:none; padding:10px 14px;">
+    <div class="off-banner show">
+      ⚠️ <b>백엔드 서버에 연결할 수 없습니다.</b><br>
+      터미널에서 아래 명령어를 실행하세요:<br>
+      <code>cd backend</code><br>
+      <code>python main.py</code>
     </div>
-
-    <!-- STEP 1: 파일 업로드 -->
-    <div class="panel">
-      <div class="panel-title">
-        <span class="step-badge">1</span> 승객 데이터 업로드
-      </div>
-      <div class="dropzone" id="dropzone" onclick="triggerFileOpen()">
-        <div class="dropzone-icon">📊</div>
-        <div id="dropzoneText">Excel 파일 클릭 또는 드래그</div>
-        <div class="dropzone-hint">컬럼: name / address / passenger_count</div>
-      </div>
-      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
-      <div id="passengerPreview"></div>
-    </div>
-
-    <!-- STEP 2: 차량 설정 -->
-    <div class="panel">
-      <div class="panel-title">
-        <span class="step-badge">2</span> 차량 설정
-      </div>
-      <div class="vehicle-add-row">
-        <div><label>버스 ID</label><input type="text" id="vBusId" placeholder="Bus1"></div>
-        <div><label>정원(인)</label><input type="number" id="vCapacity" placeholder="45" min="1" max="100"></div>
-        <div style="display:flex;flex-direction:column;justify-content:flex-end;">
-          <button class="btn btn-outline" onclick="addVehicle()" style="width:100%;padding:7px">+ 추가</button>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
-        <div class="form-group" style="margin:0"><label>출발지</label><input type="text" id="vStart" placeholder="예: 인천 연수구"></div>
-        <div class="form-group" style="margin:0"><label>도착지 (편도)</label><input type="text" id="vEnd" placeholder="비우면 왕복"></div>
-      </div>
-      <div class="vehicle-list" id="vehicleList">
-        <div style="font-size:11px;color:#445566;text-align:center;padding:10px">차량을 추가하세요</div>
-      </div>
-    </div>
-
-    <!-- STEP 3: 노선 생성 -->
-    <div class="panel">
-      <div class="panel-title">
-        <span class="step-badge">3</span> 노선 생성
-      </div>
-      <div class="form-group">
-        <label>🏁 행사장 주소</label>
-        <input type="text" id="destAddr" placeholder="예: 경기 가평군 자라섬로 10">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="form-group" style="margin:0">
-          <label>⏰ 도착 목표시간</label>
-          <input type="time" id="arrivalTime" value="10:00">
-        </div>
-        <div class="form-group" style="margin:0">
-          <label>🔁 노선 유형</label>
-          <select id="routeType">
-            <option value="round">왕복</option>
-            <option value="one_way">편도</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top:10px;">
-        <button class="btn btn-primary" id="generateBtn" onclick="generateRoutes()">
-          🚀 최적 노선 생성
-        </button>
-      </div>
-    </div>
-
-    <!-- 진행 상태 -->
-    <div class="panel" id="progressPanel" style="display:none">
-      <div class="panel-title">⏳ 처리 진행</div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:#445566;margin-bottom:4px;">
-        <span id="progressLabel">준비 중...</span>
-        <span id="progressPct">0%</span>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-      <div class="step-list" id="stepList"></div>
-    </div>
-
-    <!-- 결과 요약 -->
-    <div class="panel" id="resultPanel" style="display:none">
-      <div class="panel-title">📋 결과 요약</div>
-      <div class="summary-grid" id="summaryGrid"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">
-        <button class="btn btn-success" onclick="exportExcel()">📥 Excel 저장</button>
-        <button class="btn btn-outline" onclick="resetAll()">🔄 초기화</button>
-      </div>
-    </div>
-
-    <!-- 노선 상세 -->
-    <div class="panel" id="routeDetailPanel" style="display:none">
-      <div class="panel-title">🗺 노선 상세</div>
-      <div id="routeDetailList"></div>
-    </div>
-
   </div>
 
-  <!-- ══ 지도 영역 ══ -->
-  <div class="map-area">
-    <div id="map"></div>
-    <div class="route-panel" id="routePanel" style="display:none">
-      <div class="route-tabs-bar" id="routeTabsBar"></div>
+  <!-- STEP 1 -->
+  <div class="panel">
+    <div class="panel-title"><span class="step-badge">1</span> 승객 데이터 업로드</div>
+    <div class="dropzone" id="dropzone" onclick="triggerFile()">
+      <div class="dz-icon">📊</div>
+      <div id="dzText">Excel 파일 클릭 또는 드래그</div>
+      <div class="dz-hint">컬럼: name / address / passenger_count</div>
     </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+    <div id="paxPreview"></div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="panel">
+    <div class="panel-title"><span class="step-badge">2</span> 차량 설정</div>
+
+    <!-- 추가 폼 -->
+    <div id="addForm">
+      <div style="display:grid;grid-template-columns:1fr 85px;gap:6px;margin-bottom:6px;">
+        <div class="fg" style="margin:0"><label>버스 ID</label><input type="text" id="vBusId" placeholder="Bus1"></div>
+        <div class="fg" style="margin:0"><label>정원(인)</label><input type="number" id="vCap" placeholder="45" min="1" max="200"></div>
+      </div>
+      <div class="fg"><label>출발지</label><input type="text" id="vStart" placeholder="예: 인천 연수구"></div>
+      <button class="btn btn-outline" onclick="addVehicle()" style="width:100%;padding:7px;font-size:12px">+ 차량 추가</button>
+    </div>
+
+    <div style="height:1px;background:#1e1e3a;margin:10px 0;"></div>
+    <div class="v-list" id="vList">
+      <div style="font-size:11px;color:#445566;text-align:center;padding:8px">차량을 추가하세요</div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="panel">
+    <div class="panel-title"><span class="step-badge">3</span> 노선 생성</div>
+    <div class="fg"><label>🏁 도착지 주소</label><input type="text" id="destAddr" placeholder="예: 경기 가평군 자라섬로 10"></div>
+    <div class="fg"><label>⏰ 도착 목표시간</label><input type="time" id="arrivalTime" value="10:00" style="width:140px"></div>
+    <div style="margin-top:10px">
+      <button class="btn btn-primary" id="genBtn" onclick="generateRoutes()">🚀 최적 노선 생성</button>
+    </div>
+  </div>
+
+  <!-- 진행 상태 -->
+  <div class="panel" id="progPanel" style="display:none">
+    <div class="panel-title">⏳ 처리 진행</div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#445566;margin-bottom:4px;">
+      <span id="progLbl">준비 중...</span><span id="progPct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+    <div class="step-list" id="stepList"></div>
+  </div>
+
+  <!-- 결과 요약 -->
+  <div class="panel" id="resultPanel" style="display:none">
+    <div class="panel-title">📋 결과 요약</div>
+    <div class="sum-grid" id="sumGrid"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">
+      <button class="btn btn-success" onclick="exportExcel()">📥 Excel 저장</button>
+      <button class="btn btn-outline"  onclick="resetAll()">🔄 초기화</button>
+    </div>
+  </div>
+
+  <!-- 노선 상세 -->
+  <div class="panel" id="detailPanel" style="display:none">
+    <div class="panel-title">🗺 노선 상세</div>
+    <div id="detailList"></div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- 지도 -->
+<div class="map-area">
+  <div id="map"></div>
+  <div class="route-panel" id="routePanel" style="display:none">
+    <div class="rtabs" id="rtabs"></div>
   </div>
 </div>
+</div><!-- /main -->
 
-<!-- 로딩 오버레이 -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-box">
+<!-- 로딩 -->
+<div class="lov" id="lov">
+  <div class="lbox">
     <div class="spinner"></div>
-    <div style="font-size:14px" id="loadingText">처리 중...</div>
-    <div style="font-size:11px;color:#445566;margin-top:4px" id="loadingSubText"></div>
+    <div style="font-size:14px" id="lovText">처리 중...</div>
+    <div style="font-size:11px;color:#445566;margin-top:4px" id="lovSub"></div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 상수
-// ═══════════════════════════════════════════════
-const API_BASE  = 'http://127.0.0.1:8000/api';
-const HEALTH_URL = 'http://127.0.0.1:8000/health';
-const BUS_COLORS = ['#4488ff','#ff6633','#33cc77','#ff3366','#aa44ff','#ffbb00','#00ccbb','#ff8833','#77cc33','#cc33ff'];
-const STEPS = ['주소 좌표 확인','Distance Matrix 생성','VRP Solver 실행 (OR-Tools)','도로 시간 정교화','탑승시간 역산','지도 시각화'];
+// ═══════════════════════════════════════════════════
+const API   = 'http://127.0.0.1:8000/api';
+const HLTH  = 'http://127.0.0.1:8000/health';
+const COLORS = ['#4488ff','#ff6633','#33cc77','#ff3366','#aa44ff',
+                '#ffbb00','#00ccbb','#ff8833','#77cc33','#cc33ff'];
+const STEPS  = ['주소 좌표 확인','Distance Matrix 생성','VRP Solver 실행',
+                '도로 시간 정교화','탑승시간 역산','지도 시각화'];
 
-// ═══════════════════════════════════════════════
-// Electron IPC (브라우저 폴백 포함)
-// ═══════════════════════════════════════════════
-let ipcRenderer = null;
-try {
-  ipcRenderer = require('electron').ipcRenderer;
-} catch {
-  ipcRenderer = {
-    invoke: async (ch, data) => {
-      if (ch === 'save-file') {
-        const blob = new Blob([new Uint8Array(data.data)]);
-        const url  = URL.createObjectURL(blob);
-        const a    = Object.assign(document.createElement('a'), { href: url, download: data.defaultName });
-        a.click(); URL.revokeObjectURL(url);
-        return { success: true, path: data.defaultName };
-      }
-      return null;
+// ═══════════════════════════════════════════════════
+// Electron IPC
+// ═══════════════════════════════════════════════════
+let ipc = null;
+try { ipc = require('electron').ipcRenderer; } catch {
+  ipc = { invoke: async (ch, d) => {
+    if (ch==='save-file') {
+      const a = Object.assign(document.createElement('a'),{
+        href: URL.createObjectURL(new Blob([new Uint8Array(d.data)])),
+        download: d.defaultName
+      });
+      a.click(); return { success:true, path:d.defaultName };
     }
-  };
+  }};
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 앱 상태
-// ═══════════════════════════════════════════════
-const appState = {
+// ═══════════════════════════════════════════════════
+const S = {
   passengers: [],
   vehicles:   [],
   routes:     null,
   destination: null,
   summary:    null,
-  apiOnline:  false,
+  online:     false,
+  editingBusId: null   // 현재 인라인 편집 중인 bus_id
 };
 
-// ═══════════════════════════════════════════════
-// API 상태 관리
-// ═══════════════════════════════════════════════
-// main.js에서 호출하는 전역 함수
+// ═══════════════════════════════════════════════════
+// API 상태
+// ═══════════════════════════════════════════════════
 function updateApiStatus(online, msg) {
-  const dot   = document.getElementById('apiDot');
-  const label = document.getElementById('apiLabel');
-  const banner = document.getElementById('offlineBannerWrap');
-
-  appState.apiOnline = online;
-
-  if (online) {
-    dot.className   = 'api-dot online';
-    label.className = 'api-label online';
-    label.textContent = '연결됨 ✓';
-    banner.style.display = 'none';
-  } else {
-    dot.className   = 'api-dot offline';
-    label.className = 'api-label offline';
-    label.textContent = msg || '연결 실패';
-    banner.style.display = 'block';
-  }
+  const dot = document.getElementById('apiDot');
+  const lbl = document.getElementById('apiLbl');
+  S.online = online;
+  dot.className = `api-dot ${online?'online':'offline'}`;
+  lbl.className = `api-lbl ${online?'online':'offline'}`;
+  lbl.textContent = online ? '연결됨 ✓' : (msg||'연결 실패');
+  document.getElementById('offWrap').style.display = online ? 'none' : 'block';
 }
 
 async function checkApi() {
-  const dot   = document.getElementById('apiDot');
-  const label = document.getElementById('apiLabel');
-  dot.className = 'api-dot loading';
-  label.textContent = '확인 중...';
+  document.getElementById('apiDot').className = 'api-dot loading';
+  document.getElementById('apiLbl').textContent = '확인 중...';
   try {
-    const r = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(3000) });
+    const r = await fetch(HLTH, {signal:AbortSignal.timeout(3000)});
     updateApiStatus(r.ok);
-  } catch {
-    updateApiStatus(false, '백엔드 미실행');
-  }
+  } catch { updateApiStatus(false,'백엔드 미실행'); }
 }
-
-// 앱 시작 시 5초 후 한 번 수동 체크 (Electron이 아닌 환경 대비)
 setTimeout(checkApi, 5000);
 setInterval(checkApi, 30000);
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 지도
-// ═══════════════════════════════════════════════
-const map = L.map('map', { center:[37.5665,126.9780], zoom:10 });
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution:'© OpenStreetMap', maxZoom:19
-}).addTo(map);
+// ═══════════════════════════════════════════════════
+const map = L.map('map', {center:[37.5665,126.9780], zoom:10});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'© OpenStreetMap', maxZoom:19}).addTo(map);
 
-const mapLayers = { markers:[], lines:[], labels:[] };
-function clearMapLayers() {
-  [...mapLayers.markers,...mapLayers.lines,...mapLayers.labels].forEach(l=>map.removeLayer(l));
-  mapLayers.markers=[]; mapLayers.lines=[]; mapLayers.labels=[];
+const ML = {markers:[], lines:[]};
+function clearMap() {
+  ML.markers.forEach(m=>map.removeLayer(m));
+  ML.lines.forEach(l=>map.removeLayer(l));
+  ML.markers=[]; ML.lines=[];
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 파일 업로드
-// ═══════════════════════════════════════════════
-const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-
-function triggerFileOpen() { fileInput.click(); }
-
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-dropzone.addEventListener('dragleave', ()  => dropzone.classList.remove('drag-over'));
-dropzone.addEventListener('drop', e => {
-  e.preventDefault(); dropzone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) uploadFile(fileInput.files[0]);
-  fileInput.value = '';
-});
+// ═══════════════════════════════════════════════════
+const dz = document.getElementById('dropzone');
+const fi = document.getElementById('fileInput');
+function triggerFile() { fi.click(); }
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0])uploadFile(e.dataTransfer.files[0]);});
+fi.addEventListener('change', ()=>{if(fi.files[0])uploadFile(fi.files[0]);fi.value='';});
 
 async function uploadFile(file) {
-  // 백엔드 연결 확인
-  if (!appState.apiOnline) {
-    // 한 번 더 체크해보기
-    await checkApi();
-    if (!appState.apiOnline) {
-      toast('❌ 백엔드 서버에 연결할 수 없습니다.\n터미널에서 python main.py를 실행해 주세요.', 'error');
-      return;
-    }
-  }
-
-  showLoading('Excel 파싱 및 좌표 변환 중...', `파일: ${file.name}`);
+  if (!S.online) { await checkApi(); }
+  if (!S.online) { toast('백엔드 서버에 연결할 수 없습니다.\ncd backend && python main.py 를 실행하세요.','error'); return; }
+  showLov('Excel 파싱 중...', file.name);
   try {
-    const form = new FormData();
-    form.append('file', file);
-
-    const r = await fetch(`${API_BASE}/upload`, {
-      method: 'POST',
-      body: form,
-      signal: AbortSignal.timeout(30000)  // 30초 타임아웃
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || '업로드 실패');
-
-    appState.passengers = data.passengers.filter(p => p.geocoded);
-    renderUploadResult(data, file.name);
-    renderPassengerMarkers();
-    toast(`${data.success}명 로드 완료${data.failed>0?` (좌표실패 ${data.failed}건)`:''}`, 'success');
-  } catch (e) {
-    if (e.name === 'TypeError' && e.message.includes('fetch')) {
-      toast('❌ 서버 연결 실패\n백엔드가 실행 중인지 확인해 주세요.', 'error');
-      updateApiStatus(false, '연결 끊김');
-    } else {
-      toast(`업로드 오류: ${e.message}`, 'error');
-    }
-  } finally {
-    hideLoading();
-  }
+    const form = new FormData(); form.append('file', file);
+    const r = await fetch(`${API}/upload`, {method:'POST', body:form, signal:AbortSignal.timeout(30000)});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail||'업로드 실패');
+    S.passengers = d.passengers.filter(p=>p.geocoded);
+    renderPaxPreview(d, file.name);
+    renderPaxMarkers();
+    toast(`${d.success}명 로드 완료${d.failed>0?`\n좌표 실패 ${d.failed}건`:''}`, 'success');
+  } catch(e) {
+    if (e.message.includes('fetch')||e.name==='TypeError') { toast('서버 연결 실패','error'); updateApiStatus(false); }
+    else toast(`업로드 오류: ${e.message}`,'error');
+  } finally { hideLov(); }
 }
 
-function renderUploadResult(data, fileName) {
-  dropzone.classList.add('loaded');
-  document.getElementById('dropzoneText').textContent = `✅ ${fileName} (${data.success}명)`;
-  document.getElementById('passengerPreview').innerHTML = `
-    <div class="passenger-preview">
-      <table class="mini-table">
+function renderPaxPreview(d, fname) {
+  dz.classList.add('loaded');
+  document.getElementById('dzText').textContent = `✅ ${fname}  (${d.success}명)`;
+  document.getElementById('paxPreview').innerHTML = `
+    <div style="max-height:140px;overflow-y:auto;margin-top:8px">
+      <table class="mini-tbl">
         <thead><tr><th>이름</th><th>탑승지</th><th>인원</th><th>좌표</th></tr></thead>
-        <tbody>${data.passengers.map(p=>`
+        <tbody>${d.passengers.map(p=>`
           <tr>
             <td>${p.name}</td>
             <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left" title="${p.address}">${p.address}</td>
             <td>${p.passenger_count}</td>
-            <td class="${p.geocoded?'badge-ok':'badge-fail'}">${p.geocoded?'✓':'✗'}</td>
+            <td class="${p.geocoded?'ok':'fail'}">${p.geocoded?'✓':'✗'}</td>
           </tr>`).join('')}</tbody>
       </table>
     </div>
-    <div style="font-size:10px;color:#445566;margin-top:4px;text-align:right">
-      총 ${data.total}명 중 ${data.success}건 성공
-      ${data.failed>0?`<span style="color:#cc4466"> / ${data.failed}건 실패</span>`:''}
+    <div style="font-size:10px;color:#445566;margin-top:3px;text-align:right">
+      총 ${d.total}명 | 성공 ${d.success}건${d.failed>0?` <span style="color:#cc4466">/ 실패 ${d.failed}건</span>`:''}
     </div>`;
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 차량 관리
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 function addVehicle() {
-  const busId = document.getElementById('vBusId').value.trim() || `Bus${appState.vehicles.length+1}`;
-  const cap   = parseInt(document.getElementById('vCapacity').value) || 45;
-  const start = document.getElementById('vStart').value.trim() || '서울';
-  const end   = document.getElementById('vEnd').value.trim() || '';
-  if (appState.vehicles.find(v=>v.bus_id===busId)) { toast('이미 존재하는 버스 ID입니다.','warn'); return; }
-  appState.vehicles.push({ bus_id:busId, capacity:cap, start_location:start, end_location:end });
-  document.getElementById('vBusId').value = `Bus${appState.vehicles.length+1}`;
-  ['vCapacity','vStart','vEnd'].forEach(id=>document.getElementById(id).value='');
-  renderVehicleList();
+  const busId = document.getElementById('vBusId').value.trim() || `Bus${S.vehicles.length+1}`;
+  const cap   = parseInt(document.getElementById('vCap').value)||45;
+  const start = document.getElementById('vStart').value.trim()||'서울';
+  if (S.vehicles.find(v=>v.bus_id===busId)) { toast('이미 존재하는 버스 ID','warn'); return; }
+  S.vehicles.push({bus_id:busId, capacity:cap, start_location:start, end_location:''});
+  document.getElementById('vBusId').value  = `Bus${S.vehicles.length+1}`;
+  document.getElementById('vCap').value    = '';
+  document.getElementById('vStart').value  = '';
+  renderVList();
 }
+
 function removeVehicle(busId) {
-  appState.vehicles = appState.vehicles.filter(v=>v.bus_id!==busId);
-  renderVehicleList();
+  S.vehicles = S.vehicles.filter(v=>v.bus_id!==busId);
+  if (S.editingBusId===busId) S.editingBusId=null;
+  renderVList();
 }
-function renderVehicleList() {
-  const el = document.getElementById('vehicleList');
-  if (!appState.vehicles.length) { el.innerHTML='<div style="font-size:11px;color:#445566;text-align:center;padding:10px">차량을 추가하세요</div>'; return; }
-  el.innerHTML = appState.vehicles.map((v,i)=>`
-    <div class="vehicle-item">
-      <div class="bus-dot" style="background:${BUS_COLORS[i%BUS_COLORS.length]}"></div>
-      <div class="vehicle-info">
-        <div class="vehicle-name">${v.bus_id} <span style="color:#445566;font-size:10px;font-weight:normal">${v.capacity}인승</span></div>
-        <div class="vehicle-detail">📍 ${v.start_location}${v.end_location?' → '+v.end_location:' (왕복)'}</div>
+
+function startEdit(busId) {
+  S.editingBusId = (S.editingBusId===busId) ? null : busId;
+  renderVList();
+}
+
+function saveEdit(busId) {
+  const v = S.vehicles.find(v=>v.bus_id===busId);
+  if (!v) return;
+  v.capacity       = parseInt(document.getElementById(`eCap_${busId}`).value)||v.capacity;
+  v.start_location = document.getElementById(`eSt_${busId}`).value.trim()||v.start_location;
+  S.editingBusId = null;
+  renderVList();
+  toast(`${busId} 수정 완료`,'success');
+}
+
+function renderVList() {
+  const el = document.getElementById('vList');
+  if (!S.vehicles.length) {
+    el.innerHTML='<div style="font-size:11px;color:#445566;text-align:center;padding:8px">차량을 추가하세요</div>';
+    return;
+  }
+  el.innerHTML = S.vehicles.map((v,i)=>{
+    const c   = COLORS[i%COLORS.length];
+    const isE = S.editingBusId===v.bus_id;
+    return `
+      <div class="v-item ${isE?'editing':''}" id="vi_${v.bus_id}">
+        <div class="bus-dot" style="background:${c}"></div>
+        <div class="v-info">
+          <div class="v-name">${v.bus_id} <span style="color:#445566;font-size:10px;font-weight:normal">${v.capacity}인승</span></div>
+          <div class="v-detail">📍 ${v.start_location}</div>
+        </div>
+        <div class="v-actions">
+          <button class="btn-edit" onclick="startEdit('${v.bus_id}')" title="수정">✏️</button>
+          <button class="btn-del"  onclick="removeVehicle('${v.bus_id}')" title="삭제">✕</button>
+        </div>
       </div>
-      <button class="btn-icon" onclick="removeVehicle('${v.bus_id}')">✕</button>
-    </div>`).join('');
+      ${isE ? `
+      <div class="v-edit-form">
+        <div class="v-edit-row">
+          <div class="fg" style="margin:0"><label>출발지</label><input type="text" id="eSt_${v.bus_id}" value="${v.start_location}"></div>
+          <div class="fg" style="margin:0"><label>정원(인)</label><input type="number" id="eCap_${v.bus_id}" value="${v.capacity}" min="1"></div>
+        </div>
+        <div class="v-edit-btns">
+          <button class="btn btn-success btn-xs" onclick="saveEdit('${v.bus_id}')">저장</button>
+          <button class="btn btn-outline btn-xs"  onclick="startEdit('${v.bus_id}')">취소</button>
+        </div>
+      </div>` : ''}`;
+  }).join('');
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 노선 생성
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 async function generateRoutes() {
-  if (!appState.passengers.length) { toast('승객 데이터를 먼저 업로드하세요.','error'); return; }
-  if (!appState.vehicles.length)   { toast('차량을 1대 이상 추가하세요.','error'); return; }
+  if (!S.passengers.length) { toast('승객 데이터를 먼저 업로드하세요.','error'); return; }
+  if (!S.vehicles.length)   { toast('차량을 1대 이상 추가하세요.','error'); return; }
   const dest = document.getElementById('destAddr').value.trim();
-  if (!dest) { toast('행사장 주소를 입력하세요.','error'); return; }
+  if (!dest)  { toast('도착지 주소를 입력하세요.','error'); return; }
 
-  const totalPax = appState.passengers.reduce((s,p)=>s+p.passenger_count,0);
-  const totalCap = appState.vehicles.reduce((s,v)=>s+v.capacity,0);
-  if (totalPax > totalCap) { toast(`⚠️ 총 승객(${totalPax}명) > 총 정원(${totalCap}명)`, 'warn'); return; }
+  const totalPax = S.passengers.reduce((s,p)=>s+p.passenger_count,0);
+  const totalCap = S.vehicles.reduce((s,v)=>s+v.capacity,0);
+  if (totalPax > totalCap) { toast(`⚠️ 총 승객(${totalPax}명) > 총 정원(${totalCap}명)\n차량을 추가하세요.`,'warn'); return; }
 
-  document.getElementById('progressPanel').style.display = 'block';
-  document.getElementById('resultPanel').style.display   = 'none';
-  document.getElementById('routeDetailPanel').style.display = 'none';
+  ['progPanel','resultPanel','detailPanel'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('progPanel').style.display = 'block';
   renderStepList(STEPS);
   setProgress(5,'초기화...');
-  document.getElementById('generateBtn').disabled = true;
-  showLoading('최적 노선 계산 중...','OR-Tools VRP Solver 실행');
+  document.getElementById('genBtn').disabled = true;
+  showLov('최적 노선 계산 중...','OR-Tools VRP Solver');
 
   try {
     const payload = {
-      passengers:   appState.passengers,
-      vehicles:     appState.vehicles,
+      passengers:   S.passengers,
+      vehicles:     S.vehicles,
       arrival_time: document.getElementById('arrivalTime').value,
-      destination:  dest,
-      route_type:   document.getElementById('routeType').value
+      destination:  dest
     };
 
     setStep(0,'active'); await sleep(300);
-    setStep(0,'done');   setStep(1,'active'); setProgress(20,'매트릭스 생성 중...');
+    setStep(0,'done'); setStep(1,'active'); setProgress(20,'매트릭스 생성 중...');
     await sleep(200);
-    setStep(1,'done');   setStep(2,'active'); setProgress(40,'VRP Solver 실행 중...');
+    setStep(1,'done'); setStep(2,'active'); setProgress(40,'Solver 실행 중...');
 
-    const r = await fetch(`${API_BASE}/generate-route`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload),
-      signal: AbortSignal.timeout(60000)
+    const r = await fetch(`${API}/generate-route`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload), signal:AbortSignal.timeout(60000)
     });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || '노선 생성 실패');
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail||'노선 생성 실패');
 
-    setStep(2,'done'); setStep(3,'active'); setProgress(65,'도로 시간 정교화 중...'); await sleep(300);
-    setStep(3,'done'); setStep(4,'active'); setProgress(80,'탑승시간 계산 중...'); await sleep(200);
+    setStep(2,'done'); setStep(3,'active'); setProgress(65,'도로 시간 정교화...'); await sleep(300);
+    setStep(3,'done'); setStep(4,'active'); setProgress(80,'탑승시간 계산...'); await sleep(200);
     setStep(4,'done'); setStep(5,'active'); setProgress(90,'지도 렌더링...');
 
-    appState.routes = data.routes; appState.destination = data.destination; appState.summary = data.summary;
-    clearMapLayers();
-    renderRouteMap(data);
-    renderResultPanel(data);
-    renderRouteDetail(data.routes);
-    renderRouteTabs(data.routes);
+    S.routes=d.routes; S.destination=d.destination; S.summary=d.summary;
+    clearMap();
+    renderRouteMap(d);
+    renderResultPanel(d);
+    renderDetail(d.routes);
+    renderRtabs(d.routes);
 
     setStep(5,'done'); setProgress(100,'완료!');
-    toast(`✅ ${data.routes.length}개 노선 생성 완료 | 총 ${data.summary.total_passengers}명`, 'success');
+    toast(`✅ ${d.routes.length}개 노선 생성 완료\n총 ${d.summary.total_passengers}명`,'success');
   } catch(e) {
-    if (e.name==='TypeError' || e.message.includes('fetch')) {
-      toast('❌ 서버 연결 실패\n백엔드가 실행 중인지 확인해 주세요.','error');
-    } else {
-      toast(`오류: ${e.message}`,'error');
-    }
+    if (e.message.includes('fetch')||e.name==='TypeError') toast('서버 연결 실패\n백엔드 실행 여부를 확인하세요.','error');
+    else toast(`오류: ${e.message}`,'error');
     console.error(e);
-  } finally {
-    hideLoading();
-    document.getElementById('generateBtn').disabled = false;
-  }
+  } finally { hideLov(); document.getElementById('genBtn').disabled=false; }
 }
 
-// ═══════════════════════════════════════════════
-// 지도 렌더링
-// ═══════════════════════════════════════════════
-function renderPassengerMarkers() {
-  clearMapLayers();
-  const bounds = [];
-  appState.passengers.forEach(p => {
-    const m = L.circleMarker([p.lat,p.lng],{radius:7,color:'#7eb3ff',fillColor:'#3355ee',fillOpacity:.85,weight:2})
-      .addTo(map).bindPopup(`<div><div class="popup-name">👤 ${p.name}</div><div class="popup-row">${p.address}</div><div class="popup-row">탑승인원: <b style="color:#ffbb44">${p.passenger_count}명</b></div></div>`);
-    mapLayers.markers.push(m); bounds.push([p.lat,p.lng]);
+// ═══════════════════════════════════════════════════
+// 지도 렌더링  ★ 핵심 수정
+// ═══════════════════════════════════════════════════
+function renderPaxMarkers() {
+  clearMap();
+  const bounds=[];
+  S.passengers.forEach(p=>{
+    const m=L.circleMarker([p.lat,p.lng],{radius:7,color:'#7eb3ff',fillColor:'#3355ee',fillOpacity:.85,weight:2})
+      .addTo(map).bindPopup(`<div><div class="pop-name">👤 ${p.name}</div><div class="pop-row">${p.address}</div><div class="pop-row">인원: <b style="color:#ffbb44">${p.passenger_count}명</b></div></div>`);
+    ML.markers.push(m); bounds.push([p.lat,p.lng]);
   });
   if (bounds.length) map.fitBounds(bounds,{padding:[50,50]});
 }
 
 function renderRouteMap(data) {
-  const bounds = [];
-  if (data.destination?.lat) {
-    const dm = L.marker([data.destination.lat,data.destination.lng],{icon:L.divIcon({html:`<div style="background:linear-gradient(135deg,#ff3366,#cc1144);width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.6)">🏁</div>`,iconSize:[38,38],iconAnchor:[19,19]})})
-      .addTo(map).bindPopup(`<div><div class="popup-name">🏁 행사장</div><div class="popup-row">${data.destination.address}</div><div class="popup-time">⏰ 도착: ${data.destination.arrival_time}</div></div>`);
-    mapLayers.markers.push(dm); bounds.push([data.destination.lat,data.destination.lng]);
+  const dest = data.destination;
+  const bounds=[];
+
+  // 도착지 마커
+  if (dest?.lat && dest?.lng) {
+    const dm=L.marker([dest.lat,dest.lng],{icon:L.divIcon({
+      html:`<div style="background:linear-gradient(135deg,#ff3366,#cc1144);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.5)">🏁</div>`,
+      iconSize:[36,36],iconAnchor:[18,18]
+    })}).addTo(map).bindPopup(`<div><div class="pop-name">🏁 도착지</div><div class="pop-row">${dest.address}</div><div class="pop-time">⏰ ${dest.arrival_time}</div></div>`);
+    ML.markers.push(dm);
+    bounds.push([dest.lat,dest.lng]);
   }
-  data.routes.forEach((route,ri) => {
-    const color = BUS_COLORS[ri%BUS_COLORS.length];
-    const lineCoords = [];
-    route.stops.forEach((stop,si) => {
-      if (stop.type!=='pickup'||!stop.lat) return;
-      bounds.push([stop.lat,stop.lng]); lineCoords.push([stop.lat,stop.lng]);
-      const m = L.marker([stop.lat,stop.lng],{icon:L.divIcon({html:`<div style="background:${color};width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5)">${stop.order+1}</div>`,iconSize:[30,30],iconAnchor:[15,15]})})
-        .addTo(map).bindPopup(`<div><div class="popup-bus" style="background:${color}">${route.bus_id}</div><div class="popup-name">👤 ${stop.name}</div><div class="popup-row">${stop.address}</div><div class="popup-time">⏰ 탑승: ${stop.pickup_time||'-'}</div><div class="popup-row">탑승인원: <b style="color:#ffbb44">${stop.passenger_count}명</b></div></div>`);
-      mapLayers.markers.push(m);
+
+  data.routes.forEach((route,ri)=>{
+    const color=COLORS[ri%COLORS.length];
+    // ★ 지도 선 좌표: pickup stops + 도착지
+    const lineCoords=[];
+
+    route.stops.forEach(stop=>{
+      if (stop.type==='pickup' && stop.lat!=null && stop.lng!=null) {
+        lineCoords.push([stop.lat, stop.lng]);
+        // 픽업 마커
+        const icon=L.divIcon({
+          html:`<div style="background:${color};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:bold;border:2px solid rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.5)">${stop.pickup_order||'?'}</div>`,
+          iconSize:[28,28],iconAnchor:[14,14]
+        });
+        const m=L.marker([stop.lat,stop.lng],{icon}).addTo(map).bindPopup(
+          `<div><div class="pop-bus" style="background:${color}">${route.bus_id}</div><div class="pop-name">👤 ${stop.name}</div><div class="pop-row">${stop.address}</div><div class="pop-time">⏰ ${stop.pickup_time||'-'}</div><div class="pop-row">탑승인원: <b style="color:#ffbb44">${stop.passenger_count}명</b></div></div>`
+        );
+        ML.markers.push(m);
+        bounds.push([stop.lat,stop.lng]);
+      }
     });
-    if (data.destination?.lat) lineCoords.push([data.destination.lat,data.destination.lng]);
-    if (lineCoords.length>1) {
-      const line = L.polyline(lineCoords,{color,weight:3.5,opacity:.85,lineCap:'round',lineJoin:'round'}).addTo(map);
-      mapLayers.lines.push({line,busId:route.bus_id,idx:ri});
+
+    // 도착지 좌표를 노선 끝에 추가
+    if (dest?.lat && dest?.lng) lineCoords.push([dest.lat, dest.lng]);
+
+    // ★ 노선 선 그리기
+    if (lineCoords.length >= 2) {
+      const line=L.polyline(lineCoords,{
+        color, weight:3.5, opacity:.85, lineCap:'round', lineJoin:'round'
+      }).addTo(map);
+      ML.lines.push({line, idx:ri});
     }
   });
+
   if (bounds.length) map.fitBounds(bounds,{padding:[50,50]});
 }
 
-function renderRouteTabs(routes) {
-  const panel = document.getElementById('routePanel');
-  const bar   = document.getElementById('routeTabsBar');
-  panel.style.display = 'block';
-  bar.innerHTML = `
-    <div class="rtab active" onclick="filterRouteTab(-1,this)" style="border-color:#5533ee;color:#aabbee">전체 보기</div>
+// ═══════════════════════════════════════════════════
+// 노선 탭
+// ═══════════════════════════════════════════════════
+function renderRtabs(routes) {
+  const panel=document.getElementById('routePanel');
+  const bar  =document.getElementById('rtabs');
+  panel.style.display='block';
+  bar.innerHTML=`
+    <div class="rtab active" onclick="filterTab(-1,this)" style="border-color:#5533ee;color:#aabbee">전체</div>
     ${routes.map((r,i)=>`
-      <div class="rtab" onclick="filterRouteTab(${i},this)" style="border-color:${BUS_COLORS[i%BUS_COLORS.length]}33">
-        <span style="color:${BUS_COLORS[i%BUS_COLORS.length]}">●</span>
+      <div class="rtab" onclick="filterTab(${i},this)" style="border-color:${COLORS[i%COLORS.length]}44">
+        <span style="color:${COLORS[i%COLORS.length]}">●</span>
         ${r.bus_id} — ${r.total_passengers}명 / ${r.departure_time} 출발
       </div>`).join('')}`;
 }
-function filterRouteTab(idx,el) {
+function filterTab(idx,el) {
   document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  mapLayers.lines.forEach(({line,idx:li})=>line.setStyle(idx===-1||li===idx?{opacity:.9,weight:4}:{opacity:.1,weight:2}));
+  ML.lines.forEach(({line,idx:li})=>line.setStyle(idx===-1||li===idx?{opacity:.9,weight:4.5}:{opacity:.1,weight:2}));
 }
 
+// ═══════════════════════════════════════════════════
+// 결과 / 상세 패널
+// ═══════════════════════════════════════════════════
 function renderResultPanel(data) {
-  document.getElementById('resultPanel').style.display = 'block';
-  const dep = data.routes.reduce((m,r)=>r.departure_time<m?r.departure_time:m, data.routes[0]?.departure_time||'--:--');
-  document.getElementById('summaryGrid').innerHTML = `
+  document.getElementById('resultPanel').style.display='block';
+  const dep=data.routes.reduce((m,r)=>r.departure_time<m?r.departure_time:m, data.routes[0]?.departure_time||'--:--');
+  document.getElementById('sumGrid').innerHTML=`
     <div class="sum-card"><div class="sum-val" style="color:#22cc77">${data.summary.total_passengers}</div><div class="sum-lbl">총 탑승객</div></div>
     <div class="sum-card"><div class="sum-val">${data.summary.total_buses}</div><div class="sum-lbl">운행 버스</div></div>
     <div class="sum-card"><div class="sum-val" style="font-size:15px">${dep}</div><div class="sum-lbl">최초 출발</div></div>
-    <div class="sum-card"><div class="sum-val" style="color:#ff6633;font-size:15px">${data.destination.arrival_time}</div><div class="sum-lbl">행사장 도착</div></div>`;
+    <div class="sum-card"><div class="sum-val" style="color:#ff6633;font-size:15px">${data.destination.arrival_time}</div><div class="sum-lbl">도착지 도착</div></div>`;
 }
 
-function renderRouteDetail(routes) {
-  document.getElementById('routeDetailPanel').style.display = 'block';
-  document.getElementById('routeDetailList').innerHTML = routes.map((r,ri)=>{
-    const color = BUS_COLORS[ri%BUS_COLORS.length];
-    const pickups = r.stops.filter(s=>s.type==='pickup');
-    return `<div style="margin-bottom:12px;border:1px solid ${color}33;border-radius:8px;overflow:hidden;">
-      <div style="background:${color}22;padding:7px 10px;display:flex;align-items:center;justify-content:space-between;">
-        <span style="color:${color};font-weight:bold;font-size:12px">🚌 ${r.bus_id}</span>
-        <span style="font-size:10px;color:#8899bb">${r.departure_time} 출발 → ${r.arrival_time} 도착 | ${r.total_duration_min||0}분 | ${r.total_passengers}명</span>
+function renderDetail(routes) {
+  document.getElementById('detailPanel').style.display='block';
+  document.getElementById('detailList').innerHTML=routes.map((r,ri)=>{
+    const c=COLORS[ri%COLORS.length];
+    const pickups=r.stops.filter(s=>s.type==='pickup');
+    return `<div style="margin-bottom:10px;border:1px solid ${c}33;border-radius:8px;overflow:hidden;">
+      <div style="background:${c}22;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="color:${c};font-weight:bold;font-size:12px">🚌 ${r.bus_id}</span>
+        <span style="font-size:10px;color:#8899bb">${r.departure_time}→${r.arrival_time} | ${r.total_duration_min||0}분 | ${r.total_passengers}명</span>
       </div>
       ${pickups.map((s,si)=>`
         <div style="display:flex;align-items:center;padding:4px 10px;gap:8px;font-size:11px;border-bottom:1px solid #151525">
-          <span style="background:${color};color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${si+1}</span>
+          <span style="background:${c};color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${si+1}</span>
           <span style="flex:1;color:#ccddee">${s.name}</span>
           <span style="color:#778899;flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.address}</span>
           <span style="color:#44dd88;font-weight:bold;flex-shrink:0">${s.pickup_time||'-'}</span>
           <span style="color:#ffbb44;flex-shrink:0">${s.passenger_count}명</span>
         </div>`).join('')}
       <div style="display:flex;align-items:center;padding:4px 10px;gap:8px;font-size:11px;background:#1a1a30">
-        <span style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🏁</span>
-        <span style="flex:1;color:#ff4466;font-weight:bold">행사장 도착</span>
-        <span style="color:#ff4466;font-weight:bold;flex-shrink:0">${r.arrival_time}</span>
+        <span style="width:20px;text-align:center">🏁</span>
+        <span style="flex:1;color:#ff4466;font-weight:bold">도착지</span>
+        <span style="color:#ff4466;font-weight:bold">${r.arrival_time}</span>
       </div>
     </div>`;
   }).join('');
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // Excel Export
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 async function exportExcel() {
-  if (!appState.routes) { toast('노선을 먼저 생성하세요.','warn'); return; }
-  showLoading('Excel 파일 생성 중...','3개 시트 작성 중');
+  if (!S.routes) { toast('노선을 먼저 생성하세요.','warn'); return; }
+  showLov('Excel 생성 중...','3시트 작성');
   try {
-    const r = await fetch(`${API_BASE}/export`,{
+    const r=await fetch(`${API}/export`,{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({routes:appState.routes,destination:appState.destination,summary:appState.summary}),
+      body:JSON.stringify({routes:S.routes, destination:S.destination, summary:S.summary}),
       signal:AbortSignal.timeout(30000)
     });
     if(!r.ok) throw new Error('Export 실패');
-    const uint8 = Array.from(new Uint8Array(await r.arrayBuffer()));
-    const today = new Date().toLocaleDateString('ko-KR').replace(/\.\s*/g,'-').replace(/-$/,'');
-    const res = await ipcRenderer.invoke('save-file',{ defaultName:`DaOnRoad_노선_${today}.xlsx`, data:uint8 });
-    if(res?.success) toast(`✅ 저장 완료: ${res.path}`,'success');
+    const uint8=Array.from(new Uint8Array(await r.arrayBuffer()));
+    const today=new Date().toLocaleDateString('ko-KR').replace(/\.\s*/g,'-').replace(/-$/,'');
+    const res=await ipc.invoke('save-file',{defaultName:`DaOnRoad_${today}.xlsx`, data:uint8});
+    if(res?.success) toast(`✅ 저장 완료\n${res.path}`,'success');
   } catch(e) { toast(`Export 오류: ${e.message}`,'error'); }
-  finally { hideLoading(); }
+  finally { hideLov(); }
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 진행 상태 UI
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 function renderStepList(steps) {
-  document.getElementById('stepList').innerHTML = steps.map((s,i)=>
-    `<div class="step-row" id="step_${i}"><span id="stepIcon_${i}">○</span> ${s}</div>`).join('');
+  document.getElementById('stepList').innerHTML=
+    steps.map((s,i)=>`<div class="step-row" id="sr_${i}"><span id="si_${i}">○</span> ${s}</div>`).join('');
 }
-function setStep(i,status) {
-  const row=document.getElementById(`step_${i}`), icon=document.getElementById(`stepIcon_${i}`);
-  if(!row) return;
-  row.className=`step-row ${status}`;
-  icon.textContent=status==='done'?'✅':status==='active'?'⟳':'○';
+function setStep(i,st) {
+  const r=document.getElementById(`sr_${i}`), ic=document.getElementById(`si_${i}`);
+  if(!r) return;
+  r.className=`step-row ${st}`;
+  ic.textContent=st==='done'?'✅':st==='active'?'⟳':'○';
 }
-function setProgress(pct,label) {
-  document.getElementById('progressFill').style.width=pct+'%';
-  document.getElementById('progressPct').textContent=pct+'%';
-  if(label) document.getElementById('progressLabel').textContent=label;
+function setProgress(p,lbl) {
+  document.getElementById('progFill').style.width=p+'%';
+  document.getElementById('progPct').textContent=p+'%';
+  if(lbl) document.getElementById('progLbl').textContent=lbl;
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 로딩 / 토스트 / 유틸
-// ═══════════════════════════════════════════════
-function showLoading(text,sub) {
-  document.getElementById('loadingText').textContent=text||'처리 중...';
-  document.getElementById('loadingSubText').textContent=sub||'';
-  document.getElementById('loadingOverlay').classList.add('show');
+// ═══════════════════════════════════════════════════
+function showLov(t,s) {
+  document.getElementById('lovText').textContent=t||'처리 중...';
+  document.getElementById('lovSub').textContent=s||'';
+  document.getElementById('lov').classList.add('show');
 }
-function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+function hideLov() { document.getElementById('lov').classList.remove('show'); }
 
-function toast(msg, type='info') {
-  const el = document.createElement('div');
+function toast(msg,type='info') {
+  const el=document.createElement('div');
   el.className=`toast ${type}`; el.textContent=msg; document.body.appendChild(el);
-  setTimeout(()=>{ el.style.animation='toastIn .3s ease reverse'; setTimeout(()=>el.remove(),300); },3700);
+  setTimeout(()=>{ el.style.animation='tIn .3s ease reverse'; setTimeout(()=>el.remove(),300); },3700);
 }
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
 function resetAll() {
-  Object.assign(appState,{passengers:[],vehicles:[],routes:null,destination:null,summary:null});
-  clearMapLayers(); map.setView([37.5665,126.9780],10);
-  document.getElementById('passengerPreview').innerHTML='';
-  dropzone.classList.remove('loaded');
-  document.getElementById('dropzoneText').textContent='Excel 파일 클릭 또는 드래그';
-  renderVehicleList();
-  ['progressPanel','resultPanel','routeDetailPanel','routePanel'].forEach(id=>document.getElementById(id).style.display='none');
+  Object.assign(S,{passengers:[],vehicles:[],routes:null,destination:null,summary:null,editingBusId:null});
+  clearMap(); map.setView([37.5665,126.9780],10);
+  document.getElementById('paxPreview').innerHTML='';
+  dz.classList.remove('loaded');
+  document.getElementById('dzText').textContent='Excel 파일 클릭 또는 드래그';
+  renderVList();
+  ['progPanel','resultPanel','detailPanel','routePanel'].forEach(id=>document.getElementById(id).style.display='none');
   toast('초기화 완료','info');
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // 초기 데모 차량
-// ═══════════════════════════════════════════════
-appState.vehicles = [
+// ═══════════════════════════════════════════════════
+S.vehicles=[
   {bus_id:'Bus1',capacity:45,start_location:'인천 연수구',end_location:''},
   {bus_id:'Bus2',capacity:35,start_location:'서울 강남구',end_location:''},
   {bus_id:'Bus3',capacity:21,start_location:'수원 팔달구',end_location:''},
 ];
-renderVehicleList();
+renderVList();
 </script>
 </body>
 </html>
