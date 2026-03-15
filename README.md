@@ -39,7 +39,15 @@ pip install -r requirements.txt
 - 앱 이름 입력 후 생성
 - **앱 키** 탭 → **REST API 키** 복사
 
-**2. .env 파일 생성**
+**2. Kakao 맵 API 활성화** ← ⚠️ 이 단계를 빠뜨리면 검색이 동작하지 않습니다
+
+- [developers.kakao.com](https://developers.kakao.com) → 내 애플리케이션 → 앱 선택
+- 왼쪽 메뉴 **앱 설정 → 카카오 로그인** → 활성화 (선택사항)
+- 왼쪽 메뉴 **제품 설정 → 카카오맵** → **사용 설정 ON**
+
+> ✅ 카카오맵 사용 설정을 ON으로 해야 주소/장소 검색 API가 활성화됩니다.
+
+**3. .env 파일 생성**
 
 `backend/` 폴더 안에 `.env` 파일을 새로 만들고 아래 내용을 입력:
 

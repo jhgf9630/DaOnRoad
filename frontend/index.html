@@ -308,7 +308,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
 const layerPax     = L.markerClusterGroup({maxClusterRadius:40,showCoverageOnHover:false,
   iconCreateFunction:c=>{
     const n=c.getChildCount();
-    return L.divIcon({html:`<div style="background:rgba(50,80,220,.85);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4)">${n}</div>`,iconSize:[32,32],iconAnchor:[16,16]});
+    return L.divIcon({html:`<div style="background:rgba(50,80,220,.85);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4)">${n}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
   }}).addTo(map);
 const layerVehicle = L.layerGroup().addTo(map);
 const layerDest    = L.layerGroup().addTo(map);
@@ -316,7 +316,7 @@ const layerRoute   = L.layerGroup().addTo(map);
 const layerStop    = L.markerClusterGroup({maxClusterRadius:30,showCoverageOnHover:false,
   iconCreateFunction:c=>{
     const n=c.getChildCount();
-    return L.divIcon({html:`<div style="background:rgba(80,50,180,.85);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)">${n}</div>`,iconSize:[28,28],iconAnchor:[14,14]});
+    return L.divIcon({html:`<div style="background:rgba(80,50,180,.85);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)">${n}</div>`,iconSize:[28,28],iconAnchor:[14,14],className:''});
   }}).addTo(map);
 
 const ML={lines:[]};
@@ -348,7 +348,7 @@ class AddressSearch {
             onkeydown="S.addrSearches['${this.id}']._onKey(event)"
             onfocus="S.addrSearches['${this.id}']._showDropdown()"
           >
-          <button class="btn-find" onclick="S.addrSearches['${this.id}']._doSearch()">🔍 검색</button>
+          <button class="btn-find" onclick="S.addrSearches['${this.id}']._doSearch()">✅ 확인</button>
         </div>
         <div class="search-dropdown" id="dd_${this.id}"></div>
         <div class="coord-badge" id="cb_${this.id}"></div>
@@ -453,7 +453,16 @@ class AddressSearch {
       :item.address;
     this._setBadge(`✓ ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`,'ok');
     this._closeDropdown();
+    // ★ 항상 지도에서 해당 위치 표시 (onSelect 콜백 호출 전)
+    this._showOnMap(item);
     if(this.options.onSelect) this.options.onSelect(item);
+  }
+
+  _showOnMap(item) {
+    // 기본 미리보기: 지도 이동 (각 인스턴스별 onSelect에서 마커 추가)
+    if(item?.lat && item?.lng) {
+      map.setView([item.lat, item.lng], 15);
+    }
   }
 
   _clearSelected(){
@@ -586,7 +595,19 @@ function renderPaxMarkers(){
 function initAddFormAddr(){
   new AddressSearch('addFormAddrWrap',{
     placeholder:'출발지 주소 또는 장소명',
-    onSelect: item=>{ /* 선택 시 지도 미리보기 */ previewOnMap(item, 'temp'); }
+    onSelect: item=>{
+      // 확인 버튼 클릭 후 지도에 임시 출발지 마커 표시
+      layerVehicle.clearLayers();
+      const icon=L.divIcon({
+        html:`<div style="background:#ffaa33;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.5)">🚌</div>`,
+        iconSize:[32,32],iconAnchor:[16,16],className:''
+      });
+      const m=L.marker([item.lat,item.lng],{icon})
+        .bindPopup(`<div><div class="pop-name" style="color:#ffaa33">🚌 출발지 미리보기</div><div class="pop-row">${item.name||item.address}</div><div class="pop-row" style="color:#8899bb;font-size:10px">${item.address}</div></div>`);
+      layerVehicle.addLayer(m);
+      m.openPopup();
+      renderVehicleMarkers(); // 기존 등록 차량도 함께 표시
+    }
   });
 }
 
