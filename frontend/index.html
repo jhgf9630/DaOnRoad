@@ -411,7 +411,12 @@ class AddressSearch {
   _renderResults(results) {
     const dd=document.getElementById(`dd_${this.id}`);
     if(!results.length){
-      dd.innerHTML='<div class="search-no-result">검색 결과가 없습니다.<br><small style="color:#445566">정확한 주소 또는 장소명을 입력하세요</small></div>';
+      dd.innerHTML=`<div class="search-no-result">
+        검색 결과 없음<br>
+        <small style="color:#445566">다른 검색어를 시도하거나<br>
+        백엔드 터미널에서 오류를 확인하세요</small><br>
+        <small style="color:#334466"><a href="http://127.0.0.1:8000/api/debug-key" target="_blank" style="color:#5577ff">API 키 상태 확인 →</a></small>
+      </div>`;
       return;
     }
     dd.innerHTML=results.map((r,i)=>`

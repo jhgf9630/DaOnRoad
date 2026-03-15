@@ -191,3 +191,45 @@ async def generate_route(request: RouteRequest):
         import traceback
         print(f"[routing ERROR]\n{traceback.format_exc()}")
         raise HTTPException(500, f"노선 생성 오류: {str(e)}")
+
+
+# ── 진단용 엔드포인트 ─────────────────────────────────────────────
+@router.get("/debug-key")
+async def debug_key():
+    """API 키 설정 상태 및 Kakao 연결 테스트"""
+    import os, requests as req
+    kakao = os.environ.get("KAKAO_API_KEY", "").strip()
+    tmap  = os.environ.get("TMAP_API_KEY",  "").strip()
+
+    result = {
+        "kakao_key_set": bool(kakao),
+        "kakao_key_prefix": kakao[:8] + "..." if kakao else "",
+        "tmap_key_set": bool(tmap),
+    }
+
+    # Kakao API 실제 호출 테스트
+    if kakao:
+        try:
+            r = req.get(
+                "https://dapi.kakao.com/v2/local/search/keyword.json",
+                headers={"Authorization": f"KakaoAK {kakao}"},
+                params={"query": "서울역", "size": 1},
+                timeout=5
+            )
+            data = r.json()
+            result["kakao_test_status"] = r.status_code
+            result["kakao_test_ok"] = r.status_code == 200 and "documents" in data
+            result["kakao_test_error"] = data.get("errorType") or data.get("message", "")
+            result["kakao_result_count"] = len(data.get("documents", []))
+        except Exception as e:
+            result["kakao_test_ok"] = False
+            result["kakao_test_error"] = str(e)
+
+    return result
+
+
+@router.delete("/cache")
+async def clear_cache():
+    """지오코딩 캐시 초기화"""
+    geocoder.cache.clear()
+    return {"message": "캐시가 초기화되었습니다."}
