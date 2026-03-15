@@ -9,7 +9,7 @@ from solver.vrp_solver import VRPSolver
 from scheduler.time_scheduler import TimeScheduler
 from routing.geocoder import Geocoder
 
-router  = APIRouter()
+router   = APIRouter()
 geocoder = Geocoder()
 
 
@@ -25,19 +25,18 @@ class VehicleConfig(BaseModel):
     bus_id: str
     capacity: int
     start_location: str
-    # 편도 end는 UI에서 제거했지만 API 하위 호환 유지
     end_location: Optional[str] = None
     start_lat: Optional[float] = None
     start_lng: Optional[float] = None
-    end_lat: Optional[float] = None
-    end_lng: Optional[float] = None
+    end_lat:   Optional[float] = None
+    end_lng:   Optional[float] = None
 
 
 class RouteRequest(BaseModel):
-    passengers: List[Passenger]
-    vehicles: List[VehicleConfig]
-    arrival_time: str       # "HH:MM"
-    destination: str        # 도착지 주소
+    passengers:      List[Passenger]
+    vehicles:        List[VehicleConfig]
+    arrival_time:    str            # "HH:MM"
+    destination:     str            # 도착지 주소
     destination_lat: Optional[float] = None
     destination_lng: Optional[float] = None
 
@@ -45,7 +44,7 @@ class RouteRequest(BaseModel):
 @router.post("/generate-route")
 async def generate_route(request: RouteRequest):
     try:
-        # 1. 도착지 좌표
+        # ── 1. 도착지 좌표 ───────────────────────────────
         if not request.destination_lat or not request.destination_lng:
             coord = geocoder.geocode(request.destination)
             if not coord:
@@ -54,7 +53,7 @@ async def generate_route(request: RouteRequest):
         else:
             dest_lat, dest_lng = request.destination_lat, request.destination_lng
 
-        # 2. 차량 좌표 (출발지만; 항상 왕복으로 처리)
+        # ── 2. 차량 출발지 좌표 ──────────────────────────
         vehicles_data = []
         for v in request.vehicles:
             vd = v.dict()
@@ -63,13 +62,17 @@ async def generate_route(request: RouteRequest):
                 if coord:
                     vd['start_lat'] = coord['lat']
                     vd['start_lng'] = coord['lng']
-            # 항상 왕복: end = start
-            vd['end_lat']      = vd.get('start_lat', dest_lat)
-            vd['end_lng']      = vd.get('start_lng', dest_lng)
-            vd['end_location'] = vd['start_location']
+                else:
+                    # fallback: 도착지 좌표 사용
+                    vd['start_lat'] = dest_lat
+                    vd['start_lng'] = dest_lng
+            # end = destination (solver에서 처리하지만 명시)
+            vd['end_lat']      = dest_lat
+            vd['end_lng']      = dest_lng
+            vd['end_location'] = request.destination
             vehicles_data.append(vd)
 
-        # 3. Distance Matrix
+        # ── 3. Distance Matrix ───────────────────────────
         passengers_data = [p.dict() for p in request.passengers]
         matrix_builder  = MatrixBuilder()
         matrix_result   = matrix_builder.build(
@@ -78,7 +81,11 @@ async def generate_route(request: RouteRequest):
             destination={"lat": dest_lat, "lng": dest_lng, "address": request.destination}
         )
 
-        # 4. VRP Solver
+        print(f"[routing] 노드수={len(matrix_result['matrix'])}, "
+              f"승객={len(passengers_data)}, 차량={len(vehicles_data)}, "
+              f"dest_idx={matrix_result['destination_idx']}")
+
+        # ── 4. VRP Solver ────────────────────────────────
         solver   = VRPSolver()
         solution = solver.solve(
             distance_matrix=matrix_result['matrix'],
@@ -90,10 +97,13 @@ async def generate_route(request: RouteRequest):
             vehicle_end_indices=matrix_result['vehicle_end_indices']
         )
 
-        if not solution['success']:
-            raise HTTPException(400, "노선 최적화 실패. 차량 수/용량을 확인하세요.")
+        if not solution['success'] or not solution['routes']:
+            raise HTTPException(400,
+                "노선 최적화 실패. 차량 총 정원이 총 승객 수 이상인지 확인하세요.")
 
-        # 5. destination stop에 실제 좌표·주소 채워넣기 ★
+        print(f"[routing] 생성된 노선 수: {len(solution['routes'])}")
+
+        # ── 5. destination stop에 실제 좌표·주소 주입 ────
         for route in solution['routes']:
             for stop in route['stops']:
                 if stop['type'] == 'destination':
@@ -101,10 +111,10 @@ async def generate_route(request: RouteRequest):
                     stop['lng']     = dest_lng
                     stop['address'] = request.destination
 
-        # 6. 도로 시간 정교화
+        # ── 6. 도로 시간 정교화 (캐시 우선) ─────────────
         matrix_builder.refine_with_road_api(solution['routes'], matrix_result)
 
-        # 7. 탑승시간 역산
+        # ── 7. 탑승시간 역산 ─────────────────────────────
         scheduler = TimeScheduler()
         scheduled = scheduler.calculate_times(
             routes=solution['routes'],
@@ -116,9 +126,14 @@ async def generate_route(request: RouteRequest):
             destination_idx=matrix_result['destination_idx']
         )
 
+        print(f"[routing] 스케줄된 노선 수: {len(scheduled)}")
+
+        if not scheduled:
+            raise HTTPException(500, "시간 계산 결과가 비어있습니다. 서버 로그를 확인하세요.")
+
         return {
             "success": True,
-            "routes": scheduled,
+            "routes":  scheduled,
             "destination": {
                 "address":      request.destination,
                 "lat":          dest_lat,
@@ -136,12 +151,14 @@ async def generate_route(request: RouteRequest):
         raise
     except Exception as e:
         import traceback
-        raise HTTPException(500, f"노선 생성 오류: {str(e)}\n{traceback.format_exc()}")
+        tb = traceback.format_exc()
+        print(f"[routing ERROR]\n{tb}")
+        raise HTTPException(500, f"노선 생성 오류: {str(e)}")
 
 
 @router.post("/geocode")
 async def geocode_address(body: Dict[str, str]):
-    address = body.get("address")
+    address = body.get("address", "").strip()
     if not address:
         raise HTTPException(400, "address 필드가 필요합니다.")
     coord = geocoder.geocode(address)

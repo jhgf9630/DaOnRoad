@@ -9,29 +9,26 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:#0f0f1a; color:#e0e0e0; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 
-/* ── 헤더 ── */
 .header { background:linear-gradient(135deg,#1a1a3e,#2d2d6b); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #4444aa; flex-shrink:0; }
 .header-left { display:flex; align-items:center; gap:12px; }
-.header-logo { font-size:20px; font-weight:900; letter-spacing:1px; background:linear-gradient(135deg,#7eb3ff,#aa88ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.header-sub { font-size:11px; color:#556688; border-left:1px solid #2a2a5a; padding-left:12px; }
+.logo { font-size:20px; font-weight:900; letter-spacing:1px; background:linear-gradient(135deg,#7eb3ff,#aa88ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.sub  { font-size:11px; color:#556688; border-left:1px solid #2a2a5a; padding-left:12px; }
 .api-bar { display:flex; align-items:center; gap:8px; font-size:11px; }
-.api-dot { width:8px; height:8px; border-radius:50%; background:#444; transition:background .4s; flex-shrink:0; }
-.api-dot.online  { background:#22cc77; box-shadow:0 0 6px #22cc7788; }
-.api-dot.offline { background:#cc4466; box-shadow:0 0 6px #cc446688; }
-.api-dot.loading { background:#ffaa33; animation:blink 1s infinite; }
+.api-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition:background .4s; }
+.api-dot.on  { background:#22cc77; box-shadow:0 0 6px #22cc7788; }
+.api-dot.off { background:#cc4466; box-shadow:0 0 6px #cc446688; }
+.api-dot.ing { background:#ffaa33; animation:blink 1s infinite; }
 .api-lbl { color:#8899bb; }
-.api-lbl.online  { color:#22cc77; }
-.api-lbl.offline { color:#cc4466; }
+.api-lbl.on  { color:#22cc77; }
+.api-lbl.off { color:#cc4466; }
 @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
 
-/* ── 레이아웃 ── */
-.main { display:flex; flex:1; overflow:hidden; }
+.main    { display:flex; flex:1; overflow:hidden; }
 .sidebar { width:370px; background:#12122a; border-right:1px solid #2a2a4a; display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0; }
-.panel { padding:14px 16px; border-bottom:1px solid #1e1e3a; }
-.panel-title { font-size:12px; font-weight:bold; color:#7eb3ff; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
-.step-badge { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; color:#fff; background:#5533ee; flex-shrink:0; }
+.panel   { padding:13px 15px; border-bottom:1px solid #1e1e3a; }
+.ptitle  { font-size:12px; font-weight:bold; color:#7eb3ff; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.sbadge  { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; color:#fff; background:#5533ee; flex-shrink:0; }
 
-/* ── 폼 ── */
 .fg { margin-bottom:8px; }
 .fg:last-child { margin-bottom:0; }
 label { display:block; font-size:11px; color:#8899bb; margin-bottom:3px; }
@@ -42,7 +39,19 @@ input[type=text],input[type=number],input[type=time],select {
 input:focus,select:focus { outline:none; border-color:#5577ff; background:#1e1e3a; }
 input::placeholder { color:#445566; }
 
-/* ── 버튼 ── */
+/* 주소 입력 + 미리보기 버튼 */
+.addr-row { display:flex; gap:5px; }
+.addr-row input { flex:1; }
+.btn-preview { padding:7px 10px; background:#1e1e40; border:1px solid #334466; border-radius:6px; color:#7eb3ff; font-size:11px; cursor:pointer; white-space:nowrap; transition:all .2s; }
+.btn-preview:hover { background:#2a2a58; border-color:#7eb3ff; }
+.btn-preview:disabled { opacity:.4; cursor:not-allowed; }
+
+/* 좌표 표시 배지 */
+.coord-badge { font-size:10px; color:#556677; margin-top:3px; min-height:14px; }
+.coord-badge.ok   { color:#22cc77; }
+.coord-badge.fail { color:#cc4466; }
+.coord-badge.loading { color:#ffaa33; }
+
 .btn { padding:8px 14px; border:none; border-radius:7px; cursor:pointer; font-size:12px; font-weight:bold; transition:all .2s; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
 .btn:disabled { opacity:.4; cursor:not-allowed; }
 .btn-primary { background:linear-gradient(135deg,#3355ee,#5533ee); color:#fff; width:100%; padding:10px; font-size:13px; }
@@ -53,59 +62,45 @@ input::placeholder { color:#445566; }
 .btn-outline:hover { border-color:#7eb3ff; color:#7eb3ff; }
 .btn-xs { padding:3px 8px; font-size:10px; border-radius:5px; }
 
-/* ── 드롭존 ── */
-.dropzone { border:2px dashed #2a2a5a; border-radius:10px; padding:16px; text-align:center; cursor:pointer; transition:all .3s; color:#556677; }
+.dropzone { border:2px dashed #2a2a5a; border-radius:10px; padding:15px; text-align:center; cursor:pointer; transition:all .3s; color:#556677; }
 .dropzone:hover,.dropzone.drag-over { border-color:#5577ff; color:#7eb3ff; background:rgba(85,119,255,.05); }
 .dropzone.loaded { border-color:#1a8855; background:rgba(26,136,85,.05); color:#22cc77; }
-.dz-icon { font-size:24px; margin-bottom:5px; }
-.dz-hint { font-size:10px; color:#445566; margin-top:3px; }
 
-/* ── 테이블 ── */
 .mini-tbl { width:100%; font-size:10px; border-collapse:collapse; }
 .mini-tbl th { background:#1a1a38; padding:4px 6px; color:#7eb3ff; border-bottom:1px solid #2a2a4a; position:sticky; top:0; text-align:center; }
 .mini-tbl td { padding:3px 6px; border-bottom:1px solid #191928; text-align:center; color:#ccc; }
 .mini-tbl tr:hover td { background:#1a1a38; }
-.ok  { color:#22cc77; } .fail { color:#cc4466; }
+.ok { color:#22cc77; } .fail { color:#cc4466; }
 
-/* ── 차량 목록 ── */
 .v-list { display:flex; flex-direction:column; gap:5px; }
 .v-item { background:#191930; border:1px solid #252545; border-radius:8px; padding:7px 10px; display:flex; align-items:center; gap:8px; }
-.v-item.editing { border-color:#5577ff; background:#1a1a38; }
+.v-item.editing { border-color:#5577ff; background:#1a1a3a; }
 .bus-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .v-info { flex:1; }
-.v-name { font-size:12px; font-weight:bold; color:#aabbee; }
+.v-name   { font-size:12px; font-weight:bold; color:#aabbee; }
 .v-detail { font-size:10px; color:#556677; margin-top:1px; }
-.v-actions { display:flex; gap:4px; }
+.v-actions { display:flex; gap:3px; }
 .btn-edit { background:none; border:none; cursor:pointer; padding:3px 5px; border-radius:4px; color:#7eb3ff; font-size:12px; }
 .btn-edit:hover { background:rgba(126,179,255,.15); }
 .btn-del  { background:none; border:none; cursor:pointer; padding:3px 5px; border-radius:4px; color:#cc4466; font-size:12px; }
 .btn-del:hover  { background:rgba(204,68,102,.15); }
+.v-edit-form { background:#1a1a3a; border:1px solid #5577ff; border-radius:8px; padding:10px; margin-top:4px; }
 
-/* ── 차량 편집 인라인 폼 ── */
-.v-edit-form { background:#1a1a38; border:1px solid #5577ff; border-radius:8px; padding:10px; margin-top:4px; }
-.v-edit-row { display:grid; grid-template-columns:1fr 80px; gap:6px; margin-bottom:6px; }
-.v-edit-btns { display:flex; gap:6px; }
-
-/* ── 진행 ── */
-.progress-bar { height:5px; background:#1a1a38; border-radius:3px; overflow:hidden; }
+.progress-bar  { height:5px; background:#1a1a38; border-radius:3px; overflow:hidden; }
 .progress-fill { height:100%; background:linear-gradient(90deg,#4466ff,#9944ff,#ff44aa); transition:width .6s; border-radius:3px; }
 .step-list { display:flex; flex-direction:column; gap:5px; margin-top:8px; }
 .step-row { display:flex; align-items:center; gap:8px; font-size:11px; color:#4a5a7a; }
 .step-row.done   { color:#22cc77; }
 .step-row.active { color:#7eb3ff; font-weight:bold; }
 
-/* ── 요약 카드 ── */
 .sum-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
 .sum-card { background:#191930; border:1px solid #252545; border-radius:9px; padding:10px; text-align:center; }
-.sum-val { font-size:20px; font-weight:bold; color:#7eb3ff; line-height:1; }
-.sum-lbl { font-size:10px; color:#556677; margin-top:4px; }
+.sum-val  { font-size:20px; font-weight:bold; color:#7eb3ff; line-height:1; }
+.sum-lbl  { font-size:10px; color:#556677; margin-top:4px; }
 
-/* ── 오프라인 배너 ── */
-.off-banner { background:#2e1015; border:1px solid #aa2244; border-radius:8px; padding:10px 12px; font-size:11px; color:#ff6688; line-height:1.7; display:none; }
-.off-banner.show { display:block; }
+.off-banner { background:#2e1015; border:1px solid #aa2244; border-radius:8px; padding:10px 12px; font-size:11px; color:#ff6688; line-height:1.7; }
 .off-banner code { background:#1a0a10; padding:1px 5px; border-radius:3px; font-family:monospace; color:#ff99aa; }
 
-/* ── 노선 탭 ── */
 .route-panel { background:#0d0d20; border-top:1px solid #1e1e3a; flex-shrink:0; }
 .rtabs { display:flex; align-items:center; gap:5px; padding:6px 12px; overflow-x:auto; scrollbar-width:none; }
 .rtabs::-webkit-scrollbar { display:none; }
@@ -113,11 +108,9 @@ input::placeholder { color:#445566; }
 .rtab:hover { border-color:#5577ff; color:#aabbee; }
 .rtab.active { color:#fff; border-color:transparent !important; }
 
-/* ── 지도 ── */
 .map-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 #map { flex:1; }
 
-/* ── Leaflet 팝업 ── */
 .leaflet-popup-content-wrapper { background:#1a1a38!important; border:1px solid #334466!important; color:#dde8ff!important; border-radius:10px!important; box-shadow:0 4px 20px rgba(0,0,0,.6)!important; }
 .leaflet-popup-tip { background:#1a1a38!important; }
 .pop-name { font-size:13px; font-weight:bold; color:#7eb3ff; margin-bottom:4px; }
@@ -125,22 +118,19 @@ input::placeholder { color:#445566; }
 .pop-time { color:#44dd88; font-size:13px; font-weight:bold; }
 .pop-bus  { font-size:10px; font-weight:bold; padding:2px 7px; border-radius:10px; color:#fff; display:inline-block; margin-bottom:4px; }
 
-/* ── 토스트 ── */
-.toast { position:fixed; bottom:20px; right:20px; padding:11px 18px; border-radius:10px; font-size:12px; z-index:9999; max-width:320px; animation:tIn .3s ease; pointer-events:none; line-height:1.5; white-space:pre-line; }
+.toast { position:fixed; bottom:20px; right:20px; padding:11px 18px; border-radius:10px; font-size:12px; z-index:9999; max-width:300px; animation:tIn .3s ease; pointer-events:none; line-height:1.5; white-space:pre-line; }
 .toast.success { background:#0d2e1a; border:1px solid #22aa66; color:#55ff99; }
 .toast.error   { background:#2e0d14; border:1px solid #aa2244; color:#ff6688; }
 .toast.info    { background:#0d1a2e; border:1px solid #2255aa; color:#55aaff; }
 .toast.warn    { background:#2e220d; border:1px solid #aa7722; color:#ffcc55; }
 @keyframes tIn { from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1} }
 
-/* ── 로딩 ── */
 .lov { position:fixed; inset:0; background:rgba(5,5,15,.8); display:none; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(3px); }
 .lov.show { display:flex; }
 .lbox { text-align:center; color:#7eb3ff; }
 .spinner { width:48px; height:48px; border:3px solid #1e1e40; border-top:3px solid #7eb3ff; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 14px; }
 @keyframes spin { to{transform:rotate(360deg)} }
 
-/* ── 스크롤바 ── */
 .sidebar::-webkit-scrollbar { width:4px; }
 .sidebar::-webkit-scrollbar-track { background:#0d0d20; }
 .sidebar::-webkit-scrollbar-thumb { background:#2a2a50; border-radius:2px; }
@@ -150,11 +140,11 @@ input::placeholder { color:#445566; }
 
 <div class="header">
   <div class="header-left">
-    <div class="header-logo">DaOnRoad</div>
-    <div class="header-sub">버스 노선 최적화 시스템</div>
+    <div class="logo">DaOnRoad</div>
+    <div class="sub">버스 노선 최적화 시스템</div>
   </div>
   <div class="api-bar">
-    <div class="api-dot loading" id="apiDot"></div>
+    <div class="api-dot ing" id="apiDot"></div>
     <span class="api-lbl" id="apiLbl">백엔드 시작 중...</span>
     <button class="btn btn-outline btn-xs" onclick="checkApi()">재연결</button>
   </div>
@@ -164,10 +154,9 @@ input::placeholder { color:#445566; }
 <div class="sidebar">
 
   <!-- 오프라인 배너 -->
-  <div class="panel" id="offWrap" style="display:none; padding:10px 14px;">
-    <div class="off-banner show">
-      ⚠️ <b>백엔드 서버에 연결할 수 없습니다.</b><br>
-      터미널에서 아래 명령어를 실행하세요:<br>
+  <div class="panel" id="offWrap" style="display:none;padding:10px 14px">
+    <div class="off-banner">
+      ⚠️ <b>백엔드에 연결할 수 없습니다.</b><br>
       <code>cd backend</code><br>
       <code>python main.py</code>
     </div>
@@ -175,11 +164,11 @@ input::placeholder { color:#445566; }
 
   <!-- STEP 1 -->
   <div class="panel">
-    <div class="panel-title"><span class="step-badge">1</span> 승객 데이터 업로드</div>
+    <div class="ptitle"><span class="sbadge">1</span> 승객 데이터 업로드</div>
     <div class="dropzone" id="dropzone" onclick="triggerFile()">
-      <div class="dz-icon">📊</div>
+      <div style="font-size:24px;margin-bottom:5px">📊</div>
       <div id="dzText">Excel 파일 클릭 또는 드래그</div>
-      <div class="dz-hint">컬럼: name / address / passenger_count</div>
+      <div style="font-size:10px;color:#445566;margin-top:3px">컬럼: name / address / passenger_count</div>
     </div>
     <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
     <div id="paxPreview"></div>
@@ -187,19 +176,23 @@ input::placeholder { color:#445566; }
 
   <!-- STEP 2 -->
   <div class="panel">
-    <div class="panel-title"><span class="step-badge">2</span> 차량 설정</div>
+    <div class="ptitle"><span class="sbadge">2</span> 차량 설정</div>
 
-    <!-- 추가 폼 -->
-    <div id="addForm">
-      <div style="display:grid;grid-template-columns:1fr 85px;gap:6px;margin-bottom:6px;">
-        <div class="fg" style="margin:0"><label>버스 ID</label><input type="text" id="vBusId" placeholder="Bus1"></div>
-        <div class="fg" style="margin:0"><label>정원(인)</label><input type="number" id="vCap" placeholder="45" min="1" max="200"></div>
-      </div>
-      <div class="fg"><label>출발지</label><input type="text" id="vStart" placeholder="예: 인천 연수구"></div>
-      <button class="btn btn-outline" onclick="addVehicle()" style="width:100%;padding:7px;font-size:12px">+ 차량 추가</button>
+    <div style="display:grid;grid-template-columns:1fr 85px;gap:6px;margin-bottom:6px">
+      <div class="fg" style="margin:0"><label>버스 ID</label><input type="text" id="vBusId" placeholder="Bus1"></div>
+      <div class="fg" style="margin:0"><label>정원(인)</label><input type="number" id="vCap" placeholder="45" min="1" max="200"></div>
     </div>
+    <div class="fg">
+      <label>출발지</label>
+      <div class="addr-row">
+        <input type="text" id="vStart" placeholder="예: 인천 연수구" onkeydown="if(event.key==='Enter')previewAddr('vStart','vStartCoord')">
+        <button class="btn-preview" onclick="previewAddr('vStart','vStartCoord')">📍 확인</button>
+      </div>
+      <div class="coord-badge" id="vStartCoord"></div>
+    </div>
+    <button class="btn btn-outline" onclick="addVehicle()" style="width:100%;padding:7px;font-size:12px;margin-top:2px">+ 차량 추가</button>
 
-    <div style="height:1px;background:#1e1e3a;margin:10px 0;"></div>
+    <div style="height:1px;background:#1e1e3a;margin:10px 0"></div>
     <div class="v-list" id="vList">
       <div style="font-size:11px;color:#445566;text-align:center;padding:8px">차량을 추가하세요</div>
     </div>
@@ -207,18 +200,28 @@ input::placeholder { color:#445566; }
 
   <!-- STEP 3 -->
   <div class="panel">
-    <div class="panel-title"><span class="step-badge">3</span> 노선 생성</div>
-    <div class="fg"><label>🏁 도착지 주소</label><input type="text" id="destAddr" placeholder="예: 경기 가평군 자라섬로 10"></div>
-    <div class="fg"><label>⏰ 도착 목표시간</label><input type="time" id="arrivalTime" value="10:00" style="width:140px"></div>
+    <div class="ptitle"><span class="sbadge">3</span> 노선 생성</div>
+    <div class="fg">
+      <label>🏁 도착지 주소</label>
+      <div class="addr-row">
+        <input type="text" id="destAddr" placeholder="예: 경기 가평군 자라섬로 10" onkeydown="if(event.key==='Enter')previewAddr('destAddr','destCoord')">
+        <button class="btn-preview" onclick="previewAddr('destAddr','destCoord')">📍 확인</button>
+      </div>
+      <div class="coord-badge" id="destCoord"></div>
+    </div>
+    <div class="fg">
+      <label>⏰ 도착 목표시간</label>
+      <input type="time" id="arrivalTime" value="10:00" style="width:140px">
+    </div>
     <div style="margin-top:10px">
       <button class="btn btn-primary" id="genBtn" onclick="generateRoutes()">🚀 최적 노선 생성</button>
     </div>
   </div>
 
-  <!-- 진행 상태 -->
+  <!-- 진행 -->
   <div class="panel" id="progPanel" style="display:none">
-    <div class="panel-title">⏳ 처리 진행</div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#445566;margin-bottom:4px;">
+    <div class="ptitle">⏳ 처리 진행</div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#445566;margin-bottom:4px">
       <span id="progLbl">준비 중...</span><span id="progPct">0%</span>
     </div>
     <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
@@ -227,9 +230,9 @@ input::placeholder { color:#445566; }
 
   <!-- 결과 요약 -->
   <div class="panel" id="resultPanel" style="display:none">
-    <div class="panel-title">📋 결과 요약</div>
+    <div class="ptitle">📋 결과 요약</div>
     <div class="sum-grid" id="sumGrid"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px">
       <button class="btn btn-success" onclick="exportExcel()">📥 Excel 저장</button>
       <button class="btn btn-outline"  onclick="resetAll()">🔄 초기화</button>
     </div>
@@ -237,20 +240,19 @@ input::placeholder { color:#445566; }
 
   <!-- 노선 상세 -->
   <div class="panel" id="detailPanel" style="display:none">
-    <div class="panel-title">🗺 노선 상세</div>
+    <div class="ptitle">🗺 노선 상세</div>
     <div id="detailList"></div>
   </div>
 
 </div><!-- /sidebar -->
 
-<!-- 지도 -->
 <div class="map-area">
   <div id="map"></div>
   <div class="route-panel" id="routePanel" style="display:none">
     <div class="rtabs" id="rtabs"></div>
   </div>
 </div>
-</div><!-- /main -->
+</div>
 
 <!-- 로딩 -->
 <div class="lov" id="lov">
@@ -263,35 +265,35 @@ input::placeholder { color:#445566; }
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // 상수
-// ═══════════════════════════════════════════════════
-const API   = 'http://127.0.0.1:8000/api';
-const HLTH  = 'http://127.0.0.1:8000/health';
+// ═══════════════════════════════════════════════
+const API    = 'http://127.0.0.1:8000/api';
+const HLTH   = 'http://127.0.0.1:8000/health';
 const COLORS = ['#4488ff','#ff6633','#33cc77','#ff3366','#aa44ff',
                 '#ffbb00','#00ccbb','#ff8833','#77cc33','#cc33ff'];
 const STEPS  = ['주소 좌표 확인','Distance Matrix 생성','VRP Solver 실행',
                 '도로 시간 정교화','탑승시간 역산','지도 시각화'];
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // Electron IPC
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 let ipc = null;
 try { ipc = require('electron').ipcRenderer; } catch {
   ipc = { invoke: async (ch, d) => {
-    if (ch==='save-file') {
-      const a = Object.assign(document.createElement('a'),{
-        href: URL.createObjectURL(new Blob([new Uint8Array(d.data)])),
-        download: d.defaultName
-      });
-      a.click(); return { success:true, path:d.defaultName };
-    }
+    if (ch !== 'save-file') return null;
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([new Uint8Array(d.data)])),
+      download: d.defaultName
+    });
+    a.click();
+    return { success:true, path:d.defaultName };
   }};
 }
 
-// ═══════════════════════════════════════════════════
-// 앱 상태
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// 상태
+// ═══════════════════════════════════════════════
 const S = {
   passengers: [],
   vehicles:   [],
@@ -299,61 +301,125 @@ const S = {
   destination: null,
   summary:    null,
   online:     false,
-  editingBusId: null   // 현재 인라인 편집 중인 bus_id
+  editingId:  null,
+  // 캐싱된 좌표 (주소 → {lat,lng})
+  coordCache: {},
+  // 지도에 올린 마커들을 레이어 그룹으로 관리
 };
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// 지도 초기화
+// ═══════════════════════════════════════════════
+const map = L.map('map', {center:[37.5665,126.9780], zoom:10});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'© OpenStreetMap', maxZoom:19}).addTo(map);
+
+// 레이어 그룹별로 분리해서 관리
+const layerPax     = L.layerGroup().addTo(map); // 승객
+const layerVehicle = L.layerGroup().addTo(map); // 차량 출발지
+const layerDest    = L.layerGroup().addTo(map); // 도착지 (미리보기 & 결과)
+const layerRoute   = L.layerGroup().addTo(map); // 노선 선
+const layerStop    = L.layerGroup().addTo(map); // 노선 정류장
+
+const ML = { lines: [] };  // filterTab 용
+
+// ═══════════════════════════════════════════════
 // API 상태
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function updateApiStatus(online, msg) {
+  S.online = online;
   const dot = document.getElementById('apiDot');
   const lbl = document.getElementById('apiLbl');
-  S.online = online;
-  dot.className = `api-dot ${online?'online':'offline'}`;
-  lbl.className = `api-lbl ${online?'online':'offline'}`;
+  dot.className = `api-dot ${online?'on':'off'}`;
+  lbl.className = `api-lbl ${online?'on':'off'}`;
   lbl.textContent = online ? '연결됨 ✓' : (msg||'연결 실패');
   document.getElementById('offWrap').style.display = online ? 'none' : 'block';
 }
 
 async function checkApi() {
-  document.getElementById('apiDot').className = 'api-dot loading';
+  document.getElementById('apiDot').className = 'api-dot ing';
   document.getElementById('apiLbl').textContent = '확인 중...';
   try {
     const r = await fetch(HLTH, {signal:AbortSignal.timeout(3000)});
     updateApiStatus(r.ok);
   } catch { updateApiStatus(false,'백엔드 미실행'); }
 }
-setTimeout(checkApi, 5000);
+setTimeout(checkApi, 4000);
 setInterval(checkApi, 30000);
 
-// ═══════════════════════════════════════════════════
-// 지도
-// ═══════════════════════════════════════════════════
-const map = L.map('map', {center:[37.5665,126.9780], zoom:10});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {attribution:'© OpenStreetMap', maxZoom:19}).addTo(map);
-
-const ML = {markers:[], lines:[]};
-function clearMap() {
-  ML.markers.forEach(m=>map.removeLayer(m));
-  ML.lines.forEach(l=>map.removeLayer(l));
-  ML.markers=[]; ML.lines=[];
+// ═══════════════════════════════════════════════
+// 주소 → 좌표 변환 + 지도 미리보기  ★ NEW
+// ═══════════════════════════════════════════════
+async function geocodeAddress(address) {
+  if (!address) return null;
+  if (S.coordCache[address]) return S.coordCache[address];
+  try {
+    const r = await fetch(`${API}/geocode`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({address}),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) return null;
+    const coord = await r.json();
+    S.coordCache[address] = coord;
+    return coord;
+  } catch { return null; }
 }
 
-// ═══════════════════════════════════════════════════
+// 주소 입력 필드 → 지도에 마커 표시 + coord badge 업데이트
+async function previewAddr(inputId, badgeId, layerGroup) {
+  const input = document.getElementById(inputId);
+  const badge = document.getElementById(badgeId);
+  const addr  = input.value.trim();
+  if (!addr) { badge.textContent = '주소를 입력하세요'; badge.className='coord-badge fail'; return; }
+
+  badge.textContent = '⟳ 좌표 조회 중...';
+  badge.className = 'coord-badge loading';
+
+  if (!S.online) { await checkApi(); }
+  if (!S.online) { badge.textContent = '백엔드 미연결'; badge.className='coord-badge fail'; return; }
+
+  const coord = await geocodeAddress(addr);
+  if (!coord) {
+    badge.textContent = '⚠ 좌표 변환 실패 — 주소를 확인해주세요';
+    badge.className = 'coord-badge fail';
+    return;
+  }
+
+  badge.textContent = `✓ ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`;
+  badge.className = 'coord-badge ok';
+
+  // 도착지 미리보기는 layerDest에 표시
+  if (badgeId === 'destCoord') {
+    layerDest.clearLayers();
+    const m = L.marker([coord.lat, coord.lng], {
+      icon: L.divIcon({
+        html: `<div style="background:linear-gradient(135deg,#ff3366,#cc1144);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.5)">🏁</div>`,
+        iconSize:[34,34], iconAnchor:[17,17]
+      })
+    }).addTo(layerDest);
+    m.bindPopup(`<div><div class="pop-name">🏁 도착지 (미리보기)</div><div class="pop-row">${addr}</div></div>`).openPopup();
+    map.setView([coord.lat, coord.lng], 13);
+  }
+
+  return coord;
+}
+
+// ═══════════════════════════════════════════════
 // 파일 업로드
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 const dz = document.getElementById('dropzone');
 const fi = document.getElementById('fileInput');
 function triggerFile() { fi.click(); }
-dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragover',  e=>{e.preventDefault();dz.classList.add('drag-over');});
 dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
 dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0])uploadFile(e.dataTransfer.files[0]);});
 fi.addEventListener('change', ()=>{if(fi.files[0])uploadFile(fi.files[0]);fi.value='';});
 
 async function uploadFile(file) {
   if (!S.online) { await checkApi(); }
-  if (!S.online) { toast('백엔드 서버에 연결할 수 없습니다.\ncd backend && python main.py 를 실행하세요.','error'); return; }
+  if (!S.online) { toast('백엔드에 연결할 수 없습니다.\ncd backend && python main.py', 'error'); return; }
   showLov('Excel 파싱 중...', file.name);
   try {
     const form = new FormData(); form.append('file', file);
@@ -365,8 +431,8 @@ async function uploadFile(file) {
     renderPaxMarkers();
     toast(`${d.success}명 로드 완료${d.failed>0?`\n좌표 실패 ${d.failed}건`:''}`, 'success');
   } catch(e) {
-    if (e.message.includes('fetch')||e.name==='TypeError') { toast('서버 연결 실패','error'); updateApiStatus(false); }
-    else toast(`업로드 오류: ${e.message}`,'error');
+    toast(e.message.includes('fetch')||e.name==='TypeError'
+      ? '서버 연결 실패' : `업로드 오류: ${e.message}`, 'error');
   } finally { hideLov(); }
 }
 
@@ -391,39 +457,99 @@ function renderPaxPreview(d, fname) {
     </div>`;
 }
 
-// ═══════════════════════════════════════════════════
-// 차량 관리
-// ═══════════════════════════════════════════════════
-function addVehicle() {
+// ═══════════════════════════════════════════════
+// 승객 마커
+// ═══════════════════════════════════════════════
+function renderPaxMarkers() {
+  layerPax.clearLayers();
+  const bounds = [];
+  S.passengers.forEach(p => {
+    const m = L.circleMarker([p.lat,p.lng], {
+      radius:7, color:'#7eb3ff', fillColor:'#3355ee', fillOpacity:.85, weight:2
+    }).bindPopup(`<div>
+      <div class="pop-name">👤 ${p.name}</div>
+      <div class="pop-row">${p.address}</div>
+      <div class="pop-row">인원: <b style="color:#ffbb44">${p.passenger_count}명</b></div>
+    </div>`);
+    layerPax.addLayer(m);
+    bounds.push([p.lat, p.lng]);
+  });
+  if (bounds.length) map.fitBounds(bounds, {padding:[50,50]});
+}
+
+// ═══════════════════════════════════════════════
+// 차량 관리  ★ 등록 시 지도에 표시
+// ═══════════════════════════════════════════════
+async function addVehicle() {
   const busId = document.getElementById('vBusId').value.trim() || `Bus${S.vehicles.length+1}`;
-  const cap   = parseInt(document.getElementById('vCap').value)||45;
-  const start = document.getElementById('vStart').value.trim()||'서울';
+  const cap   = parseInt(document.getElementById('vCap').value) || 45;
+  const start = document.getElementById('vStart').value.trim() || '서울';
+
   if (S.vehicles.find(v=>v.bus_id===busId)) { toast('이미 존재하는 버스 ID','warn'); return; }
-  S.vehicles.push({bus_id:busId, capacity:cap, start_location:start, end_location:''});
+
+  // 좌표 조회 (캐시 우선)
+  const badge = document.getElementById('vStartCoord');
+  badge.textContent = '⟳ 좌표 조회 중...'; badge.className='coord-badge loading';
+
+  let coord = null;
+  if (S.online) {
+    coord = await geocodeAddress(start);
+  }
+
+  if (coord) {
+    badge.textContent = `✓ ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`;
+    badge.className = 'coord-badge ok';
+  } else {
+    badge.textContent = '좌표 조회 실패 (등록은 됩니다)';
+    badge.className = 'coord-badge fail';
+  }
+
+  S.vehicles.push({
+    bus_id: busId, capacity: cap,
+    start_location: start, end_location: '',
+    start_lat: coord?.lat || null,
+    start_lng: coord?.lng || null
+  });
+
+  // 입력 초기화
   document.getElementById('vBusId').value  = `Bus${S.vehicles.length+1}`;
   document.getElementById('vCap').value    = '';
   document.getElementById('vStart').value  = '';
+  badge.textContent = ''; badge.className = 'coord-badge';
+
   renderVList();
+  renderVehicleMarkers();  // ★ 지도에 반영
 }
 
 function removeVehicle(busId) {
   S.vehicles = S.vehicles.filter(v=>v.bus_id!==busId);
-  if (S.editingBusId===busId) S.editingBusId=null;
+  if (S.editingId===busId) S.editingId=null;
   renderVList();
+  renderVehicleMarkers();
 }
 
 function startEdit(busId) {
-  S.editingBusId = (S.editingBusId===busId) ? null : busId;
+  S.editingId = (S.editingId===busId) ? null : busId;
   renderVList();
 }
 
-function saveEdit(busId) {
+async function saveEdit(busId) {
   const v = S.vehicles.find(v=>v.bus_id===busId);
   if (!v) return;
-  v.capacity       = parseInt(document.getElementById(`eCap_${busId}`).value)||v.capacity;
-  v.start_location = document.getElementById(`eSt_${busId}`).value.trim()||v.start_location;
-  S.editingBusId = null;
+  const newCap   = parseInt(document.getElementById(`eCap_${busId}`).value) || v.capacity;
+  const newStart = document.getElementById(`eSt_${busId}`).value.trim() || v.start_location;
+
+  // 출발지 변경 시 좌표 재조회
+  if (newStart !== v.start_location && S.online) {
+    const coord = await geocodeAddress(newStart);
+    if (coord) { v.start_lat = coord.lat; v.start_lng = coord.lng; }
+    else        { v.start_lat = null; v.start_lng = null; }
+  }
+  v.capacity       = newCap;
+  v.start_location = newStart;
+  S.editingId = null;
   renderVList();
+  renderVehicleMarkers();
   toast(`${busId} 수정 완료`,'success');
 }
 
@@ -434,14 +560,15 @@ function renderVList() {
     return;
   }
   el.innerHTML = S.vehicles.map((v,i)=>{
-    const c   = COLORS[i%COLORS.length];
-    const isE = S.editingBusId===v.bus_id;
+    const c  = COLORS[i%COLORS.length];
+    const isE = S.editingId===v.bus_id;
+    const hasCoord = v.start_lat && v.start_lng;
     return `
       <div class="v-item ${isE?'editing':''}" id="vi_${v.bus_id}">
         <div class="bus-dot" style="background:${c}"></div>
         <div class="v-info">
           <div class="v-name">${v.bus_id} <span style="color:#445566;font-size:10px;font-weight:normal">${v.capacity}인승</span></div>
-          <div class="v-detail">📍 ${v.start_location}</div>
+          <div class="v-detail">📍 ${v.start_location} <span style="${hasCoord?'color:#22cc77':'color:#cc4466'}">${hasCoord?'✓':'?'}</span></div>
         </div>
         <div class="v-actions">
           <button class="btn-edit" onclick="startEdit('${v.bus_id}')" title="수정">✏️</button>
@@ -450,11 +577,11 @@ function renderVList() {
       </div>
       ${isE ? `
       <div class="v-edit-form">
-        <div class="v-edit-row">
+        <div style="display:grid;grid-template-columns:1fr 80px;gap:6px;margin-bottom:6px">
           <div class="fg" style="margin:0"><label>출발지</label><input type="text" id="eSt_${v.bus_id}" value="${v.start_location}"></div>
           <div class="fg" style="margin:0"><label>정원(인)</label><input type="number" id="eCap_${v.bus_id}" value="${v.capacity}" min="1"></div>
         </div>
-        <div class="v-edit-btns">
+        <div style="display:flex;gap:6px">
           <button class="btn btn-success btn-xs" onclick="saveEdit('${v.bus_id}')">저장</button>
           <button class="btn btn-outline btn-xs"  onclick="startEdit('${v.bus_id}')">취소</button>
         </div>
@@ -462,9 +589,29 @@ function renderVList() {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════
+// ★ 차량 출발지 마커를 지도에 표시
+function renderVehicleMarkers() {
+  layerVehicle.clearLayers();
+  S.vehicles.forEach((v, i) => {
+    if (!v.start_lat || !v.start_lng) return;
+    const color = COLORS[i%COLORS.length];
+    const icon = L.divIcon({
+      html: `<div style="background:${color};width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);transform:rotate(-5deg)">🚌</div>`,
+      iconSize:[32,32], iconAnchor:[16,16]
+    });
+    const m = L.marker([v.start_lat, v.start_lng], {icon})
+      .bindPopup(`<div>
+        <div class="pop-name" style="color:${color}">🚌 ${v.bus_id}</div>
+        <div class="pop-row">출발지: ${v.start_location}</div>
+        <div class="pop-row">정원: <b style="color:#ffbb44">${v.capacity}인승</b></div>
+      </div>`);
+    layerVehicle.addLayer(m);
+  });
+}
+
+// ═══════════════════════════════════════════════
 // 노선 생성
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 async function generateRoutes() {
   if (!S.passengers.length) { toast('승객 데이터를 먼저 업로드하세요.','error'); return; }
   if (!S.vehicles.length)   { toast('차량을 1대 이상 추가하세요.','error'); return; }
@@ -476,13 +623,20 @@ async function generateRoutes() {
   if (totalPax > totalCap) { toast(`⚠️ 총 승객(${totalPax}명) > 총 정원(${totalCap}명)\n차량을 추가하세요.`,'warn'); return; }
 
   ['progPanel','resultPanel','detailPanel'].forEach(id=>document.getElementById(id).style.display='none');
-  document.getElementById('progPanel').style.display = 'block';
-  renderStepList(STEPS);
-  setProgress(5,'초기화...');
-  document.getElementById('genBtn').disabled = true;
+  document.getElementById('progPanel').style.display='block';
+  renderStepList(STEPS); setProgress(5,'초기화...');
+  document.getElementById('genBtn').disabled=true;
   showLov('최적 노선 계산 중...','OR-Tools VRP Solver');
 
   try {
+    // 차량에 좌표가 없으면 여기서 보완
+    for (const v of S.vehicles) {
+      if ((!v.start_lat || !v.start_lng) && S.online) {
+        const coord = await geocodeAddress(v.start_location);
+        if (coord) { v.start_lat=coord.lat; v.start_lng=coord.lng; }
+      }
+    }
+
     const payload = {
       passengers:   S.passengers,
       vehicles:     S.vehicles,
@@ -490,110 +644,139 @@ async function generateRoutes() {
       destination:  dest
     };
 
-    setStep(0,'active'); await sleep(300);
-    setStep(0,'done'); setStep(1,'active'); setProgress(20,'매트릭스 생성 중...');
-    await sleep(200);
+    setStep(0,'active'); await sleep(200);
+    setStep(0,'done'); setStep(1,'active'); setProgress(20,'매트릭스 생성 중...'); await sleep(150);
     setStep(1,'done'); setStep(2,'active'); setProgress(40,'Solver 실행 중...');
 
     const r = await fetch(`${API}/generate-route`,{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload), signal:AbortSignal.timeout(60000)
+      body:JSON.stringify(payload), signal:AbortSignal.timeout(90000)
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail||'노선 생성 실패');
 
-    setStep(2,'done'); setStep(3,'active'); setProgress(65,'도로 시간 정교화...'); await sleep(300);
-    setStep(3,'done'); setStep(4,'active'); setProgress(80,'탑승시간 계산...'); await sleep(200);
+    console.log('[노선생성 응답]', JSON.stringify({
+      routes: d.routes?.length,
+      summary: d.summary,
+      firstRoute: d.routes?.[0] ? {
+        bus_id: d.routes[0].bus_id,
+        stops: d.routes[0].stops?.length,
+        total_passengers: d.routes[0].total_passengers
+      } : null
+    }));
+
+    setStep(2,'done'); setStep(3,'active'); setProgress(65,'도로 시간 정교화...'); await sleep(200);
+    setStep(3,'done'); setStep(4,'active'); setProgress(80,'탑승시간 계산...'); await sleep(150);
     setStep(4,'done'); setStep(5,'active'); setProgress(90,'지도 렌더링...');
 
     S.routes=d.routes; S.destination=d.destination; S.summary=d.summary;
-    clearMap();
+
+    // 노선 결과로 지도 재구성
+    layerPax.clearLayers();  // 승객 단독 마커는 제거 (노선 마커로 대체)
+    layerVehicle.clearLayers();
+    layerDest.clearLayers();
+    layerRoute.clearLayers();
+    layerStop.clearLayers();
+    ML.lines = [];
+
     renderRouteMap(d);
     renderResultPanel(d);
     renderDetail(d.routes);
     renderRtabs(d.routes);
 
     setStep(5,'done'); setProgress(100,'완료!');
-    toast(`✅ ${d.routes.length}개 노선 생성 완료\n총 ${d.summary.total_passengers}명`,'success');
+    toast(`✅ ${d.routes.length}개 노선 생성\n총 ${d.summary.total_passengers}명`,'success');
   } catch(e) {
-    if (e.message.includes('fetch')||e.name==='TypeError') toast('서버 연결 실패\n백엔드 실행 여부를 확인하세요.','error');
-    else toast(`오류: ${e.message}`,'error');
-    console.error(e);
+    console.error('[노선생성 오류]', e);
+    toast(`오류: ${e.message}`,'error');
   } finally { hideLov(); document.getElementById('genBtn').disabled=false; }
 }
 
-// ═══════════════════════════════════════════════════
-// 지도 렌더링  ★ 핵심 수정
-// ═══════════════════════════════════════════════════
-function renderPaxMarkers() {
-  clearMap();
-  const bounds=[];
-  S.passengers.forEach(p=>{
-    const m=L.circleMarker([p.lat,p.lng],{radius:7,color:'#7eb3ff',fillColor:'#3355ee',fillOpacity:.85,weight:2})
-      .addTo(map).bindPopup(`<div><div class="pop-name">👤 ${p.name}</div><div class="pop-row">${p.address}</div><div class="pop-row">인원: <b style="color:#ffbb44">${p.passenger_count}명</b></div></div>`);
-    ML.markers.push(m); bounds.push([p.lat,p.lng]);
-  });
-  if (bounds.length) map.fitBounds(bounds,{padding:[50,50]});
-}
-
+// ═══════════════════════════════════════════════
+// 노선 지도 렌더링  ★ 핵심 수정
+// ═══════════════════════════════════════════════
 function renderRouteMap(data) {
-  const dest = data.destination;
-  const bounds=[];
+  const dest   = data.destination;
+  const bounds = [];
 
   // 도착지 마커
   if (dest?.lat && dest?.lng) {
-    const dm=L.marker([dest.lat,dest.lng],{icon:L.divIcon({
-      html:`<div style="background:linear-gradient(135deg,#ff3366,#cc1144);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.5)">🏁</div>`,
-      iconSize:[36,36],iconAnchor:[18,18]
-    })}).addTo(map).bindPopup(`<div><div class="pop-name">🏁 도착지</div><div class="pop-row">${dest.address}</div><div class="pop-time">⏰ ${dest.arrival_time}</div></div>`);
-    ML.markers.push(dm);
-    bounds.push([dest.lat,dest.lng]);
+    const dm = L.marker([dest.lat, dest.lng], {
+      icon: L.divIcon({
+        html:`<div style="background:linear-gradient(135deg,#ff3366,#cc1144);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.5)">🏁</div>`,
+        iconSize:[36,36], iconAnchor:[18,18]
+      })
+    }).bindPopup(`<div>
+      <div class="pop-name">🏁 도착지</div>
+      <div class="pop-row">${dest.address}</div>
+      <div class="pop-time">⏰ ${dest.arrival_time}</div>
+    </div>`);
+    layerDest.addLayer(dm);
+    bounds.push([dest.lat, dest.lng]);
   }
 
-  data.routes.forEach((route,ri)=>{
-    const color=COLORS[ri%COLORS.length];
-    // ★ 지도 선 좌표: pickup stops + 도착지
-    const lineCoords=[];
+  data.routes.forEach((route, ri) => {
+    const color = COLORS[ri % COLORS.length];
+    const lineCoords = [];
 
-    route.stops.forEach(stop=>{
-      if (stop.type==='pickup' && stop.lat!=null && stop.lng!=null) {
-        lineCoords.push([stop.lat, stop.lng]);
-        // 픽업 마커
-        const icon=L.divIcon({
+    route.stops.forEach(stop => {
+      if (stop.type === 'pickup') {
+        // lat/lng 유효성 체크
+        const lat = parseFloat(stop.lat);
+        const lng = parseFloat(stop.lng);
+        if (isNaN(lat) || isNaN(lng)) {
+          console.warn(`[지도] ${stop.name} 좌표 없음`);
+          return;
+        }
+
+        lineCoords.push([lat, lng]);
+        bounds.push([lat, lng]);
+
+        const icon = L.divIcon({
           html:`<div style="background:${color};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:bold;border:2px solid rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.5)">${stop.pickup_order||'?'}</div>`,
-          iconSize:[28,28],iconAnchor:[14,14]
+          iconSize:[28,28], iconAnchor:[14,14]
         });
-        const m=L.marker([stop.lat,stop.lng],{icon}).addTo(map).bindPopup(
-          `<div><div class="pop-bus" style="background:${color}">${route.bus_id}</div><div class="pop-name">👤 ${stop.name}</div><div class="pop-row">${stop.address}</div><div class="pop-time">⏰ ${stop.pickup_time||'-'}</div><div class="pop-row">탑승인원: <b style="color:#ffbb44">${stop.passenger_count}명</b></div></div>`
+        const m = L.marker([lat, lng], {icon}).bindPopup(
+          `<div>
+            <div class="pop-bus" style="background:${color}">${route.bus_id}</div>
+            <div class="pop-name">👤 ${stop.name}</div>
+            <div class="pop-row">${stop.address}</div>
+            <div class="pop-time">⏰ ${stop.pickup_time||'-'}</div>
+            <div class="pop-row">탑승인원: <b style="color:#ffbb44">${stop.passenger_count}명</b></div>
+          </div>`
         );
-        ML.markers.push(m);
-        bounds.push([stop.lat,stop.lng]);
+        layerStop.addLayer(m);
       }
     });
 
-    // 도착지 좌표를 노선 끝에 추가
-    if (dest?.lat && dest?.lng) lineCoords.push([dest.lat, dest.lng]);
+    // 도착지 좌표를 경로 끝에 추가
+    if (dest?.lat && dest?.lng) {
+      lineCoords.push([dest.lat, dest.lng]);
+    }
 
-    // ★ 노선 선 그리기
+    console.log(`[지도] ${route.bus_id}: ${lineCoords.length}개 좌표점`);
+
     if (lineCoords.length >= 2) {
-      const line=L.polyline(lineCoords,{
+      const line = L.polyline(lineCoords, {
         color, weight:3.5, opacity:.85, lineCap:'round', lineJoin:'round'
-      }).addTo(map);
+      });
+      layerRoute.addLayer(line);
       ML.lines.push({line, idx:ri});
+    } else {
+      console.warn(`[지도] ${route.bus_id} 좌표 부족 (${lineCoords.length}개) - 선 생략`);
     }
   });
 
-  if (bounds.length) map.fitBounds(bounds,{padding:[50,50]});
+  if (bounds.length) map.fitBounds(bounds, {padding:[50,50]});
+  else map.setView([37.5665, 126.9780], 10);
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // 노선 탭
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function renderRtabs(routes) {
-  const panel=document.getElementById('routePanel');
-  const bar  =document.getElementById('rtabs');
-  panel.style.display='block';
-  bar.innerHTML=`
+  document.getElementById('routePanel').style.display='block';
+  document.getElementById('rtabs').innerHTML=`
     <div class="rtab active" onclick="filterTab(-1,this)" style="border-color:#5533ee;color:#aabbee">전체</div>
     ${routes.map((r,i)=>`
       <div class="rtab" onclick="filterTab(${i},this)" style="border-color:${COLORS[i%COLORS.length]}44">
@@ -604,19 +787,21 @@ function renderRtabs(routes) {
 function filterTab(idx,el) {
   document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  ML.lines.forEach(({line,idx:li})=>line.setStyle(idx===-1||li===idx?{opacity:.9,weight:4.5}:{opacity:.1,weight:2}));
+  ML.lines.forEach(({line,idx:li})=>line.setStyle(
+    idx===-1||li===idx ? {opacity:.9,weight:4.5} : {opacity:.1,weight:2}
+  ));
 }
 
-// ═══════════════════════════════════════════════════
-// 결과 / 상세 패널
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// 결과 / 상세
+// ═══════════════════════════════════════════════
 function renderResultPanel(data) {
   document.getElementById('resultPanel').style.display='block';
-  const dep=data.routes.reduce((m,r)=>r.departure_time<m?r.departure_time:m, data.routes[0]?.departure_time||'--:--');
+  const dep = data.routes.reduce((m,r)=>(!m||r.departure_time<m)?r.departure_time:m,'');
   document.getElementById('sumGrid').innerHTML=`
     <div class="sum-card"><div class="sum-val" style="color:#22cc77">${data.summary.total_passengers}</div><div class="sum-lbl">총 탑승객</div></div>
     <div class="sum-card"><div class="sum-val">${data.summary.total_buses}</div><div class="sum-lbl">운행 버스</div></div>
-    <div class="sum-card"><div class="sum-val" style="font-size:15px">${dep}</div><div class="sum-lbl">최초 출발</div></div>
+    <div class="sum-card"><div class="sum-val" style="font-size:15px">${dep||'--:--'}</div><div class="sum-lbl">최초 출발</div></div>
     <div class="sum-card"><div class="sum-val" style="color:#ff6633;font-size:15px">${data.destination.arrival_time}</div><div class="sum-lbl">도착지 도착</div></div>`;
 }
 
@@ -625,8 +810,8 @@ function renderDetail(routes) {
   document.getElementById('detailList').innerHTML=routes.map((r,ri)=>{
     const c=COLORS[ri%COLORS.length];
     const pickups=r.stops.filter(s=>s.type==='pickup');
-    return `<div style="margin-bottom:10px;border:1px solid ${c}33;border-radius:8px;overflow:hidden;">
-      <div style="background:${c}22;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;">
+    return `<div style="margin-bottom:10px;border:1px solid ${c}33;border-radius:8px;overflow:hidden">
+      <div style="background:${c}22;padding:6px 10px;display:flex;align-items:center;justify-content:space-between">
         <span style="color:${c};font-weight:bold;font-size:12px">🚌 ${r.bus_id}</span>
         <span style="font-size:10px;color:#8899bb">${r.departure_time}→${r.arrival_time} | ${r.total_duration_min||0}분 | ${r.total_passengers}명</span>
       </div>
@@ -647,38 +832,37 @@ function renderDetail(routes) {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // Excel Export
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 async function exportExcel() {
   if (!S.routes) { toast('노선을 먼저 생성하세요.','warn'); return; }
   showLov('Excel 생성 중...','3시트 작성');
   try {
     const r=await fetch(`${API}/export`,{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({routes:S.routes, destination:S.destination, summary:S.summary}),
+      body:JSON.stringify({routes:S.routes,destination:S.destination,summary:S.summary}),
       signal:AbortSignal.timeout(30000)
     });
     if(!r.ok) throw new Error('Export 실패');
     const uint8=Array.from(new Uint8Array(await r.arrayBuffer()));
     const today=new Date().toLocaleDateString('ko-KR').replace(/\.\s*/g,'-').replace(/-$/,'');
-    const res=await ipc.invoke('save-file',{defaultName:`DaOnRoad_${today}.xlsx`, data:uint8});
+    const res=await ipc.invoke('save-file',{defaultName:`DaOnRoad_${today}.xlsx`,data:uint8});
     if(res?.success) toast(`✅ 저장 완료\n${res.path}`,'success');
   } catch(e) { toast(`Export 오류: ${e.message}`,'error'); }
   finally { hideLov(); }
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // 진행 상태 UI
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function renderStepList(steps) {
   document.getElementById('stepList').innerHTML=
     steps.map((s,i)=>`<div class="step-row" id="sr_${i}"><span id="si_${i}">○</span> ${s}</div>`).join('');
 }
 function setStep(i,st) {
-  const r=document.getElementById(`sr_${i}`), ic=document.getElementById(`si_${i}`);
-  if(!r) return;
-  r.className=`step-row ${st}`;
+  const r=document.getElementById(`sr_${i}`),ic=document.getElementById(`si_${i}`);
+  if(!r)return; r.className=`step-row ${st}`;
   ic.textContent=st==='done'?'✅':st==='active'?'⟳':'○';
 }
 function setProgress(p,lbl) {
@@ -687,42 +871,40 @@ function setProgress(p,lbl) {
   if(lbl) document.getElementById('progLbl').textContent=lbl;
 }
 
-// ═══════════════════════════════════════════════════
-// 로딩 / 토스트 / 유틸
-// ═══════════════════════════════════════════════════
-function showLov(t,s) {
-  document.getElementById('lovText').textContent=t||'처리 중...';
-  document.getElementById('lovSub').textContent=s||'';
-  document.getElementById('lov').classList.add('show');
-}
-function hideLov() { document.getElementById('lov').classList.remove('show'); }
+// ═══════════════════════════════════════════════
+// 유틸
+// ═══════════════════════════════════════════════
+function showLov(t,s){ document.getElementById('lovText').textContent=t||'처리 중...'; document.getElementById('lovSub').textContent=s||''; document.getElementById('lov').classList.add('show'); }
+function hideLov(){ document.getElementById('lov').classList.remove('show'); }
 
-function toast(msg,type='info') {
-  const el=document.createElement('div');
-  el.className=`toast ${type}`; el.textContent=msg; document.body.appendChild(el);
-  setTimeout(()=>{ el.style.animation='tIn .3s ease reverse'; setTimeout(()=>el.remove(),300); },3700);
+function toast(msg,type='info'){
+  const el=document.createElement('div'); el.className=`toast ${type}`; el.textContent=msg; document.body.appendChild(el);
+  setTimeout(()=>{el.style.animation='tIn .3s ease reverse';setTimeout(()=>el.remove(),300);},3700);
 }
 
-function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-function resetAll() {
-  Object.assign(S,{passengers:[],vehicles:[],routes:null,destination:null,summary:null,editingBusId:null});
-  clearMap(); map.setView([37.5665,126.9780],10);
+function resetAll(){
+  Object.assign(S,{passengers:[],vehicles:[],routes:null,destination:null,summary:null,editingId:null,coordCache:{}});
+  [layerPax,layerVehicle,layerDest,layerRoute,layerStop].forEach(l=>l.clearLayers());
+  ML.lines=[];
+  map.setView([37.5665,126.9780],10);
   document.getElementById('paxPreview').innerHTML='';
   dz.classList.remove('loaded');
   document.getElementById('dzText').textContent='Excel 파일 클릭 또는 드래그';
+  ['vStartCoord','destCoord'].forEach(id=>{ const el=document.getElementById(id); if(el){el.textContent='';el.className='coord-badge';} });
   renderVList();
   ['progPanel','resultPanel','detailPanel','routePanel'].forEach(id=>document.getElementById(id).style.display='none');
   toast('초기화 완료','info');
 }
 
-// ═══════════════════════════════════════════════════
-// 초기 데모 차량
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// 초기 데모 차량 (좌표 없이 시작, 첫 geocode 시 채워짐)
+// ═══════════════════════════════════════════════
 S.vehicles=[
-  {bus_id:'Bus1',capacity:45,start_location:'인천 연수구',end_location:''},
-  {bus_id:'Bus2',capacity:35,start_location:'서울 강남구',end_location:''},
-  {bus_id:'Bus3',capacity:21,start_location:'수원 팔달구',end_location:''},
+  {bus_id:'Bus1',capacity:45,start_location:'인천 연수구',end_location:'',start_lat:null,start_lng:null},
+  {bus_id:'Bus2',capacity:35,start_location:'서울 강남구',end_location:'',start_lat:null,start_lng:null},
+  {bus_id:'Bus3',capacity:21,start_location:'수원 팔달구',end_location:'',start_lat:null,start_lng:null},
 ];
 renderVList();
 </script>
