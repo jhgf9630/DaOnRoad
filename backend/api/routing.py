@@ -64,7 +64,20 @@ async def search_address(body: Dict[str, Any]):
             "API 키가 설정되지 않았습니다. backend/.env에 KAKAO_API_KEY를 추가하세요.")
 
     results = geocoder.search(query, limit=limit)
-    print(f"[search-address] 결과 {len(results)}건")
+    print(f"[search-address] 결과 {len(results)}건: {[r.get('name','?') for r in results]}")
+
+    if not results:
+        # 빈 결과 - 진단 정보 포함해서 반환 (에러는 아님)
+        kakao_ok = bool(kakao_key)
+        return {
+            "results": [],
+            "count": 0,
+            "debug": {
+                "kakao_key_set": kakao_ok,
+                "hint": "API 키 확인: http://127.0.0.1:8000/api/debug-key" if kakao_ok else "KAKAO_API_KEY가 .env에 없습니다"
+            }
+        }
+
     return {"results": results, "count": len(results)}
 
 

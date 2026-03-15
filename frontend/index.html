@@ -398,8 +398,21 @@ class AddressSearch {
       console.log('[검색]', query, '->', d);
       if(!r.ok){
         const msg=d.detail||'검색 실패';
-        dd.innerHTML=`<div class="search-no-result">⚠️ ${msg}</div>`;
+        // 503 = API 키 없음
+        if(r.status===503){
+          dd.innerHTML=`<div class="search-no-result">⚠️ API 키 미설정<br><small style="color:#cc8888">backend/.env에 KAKAO_API_KEY를 추가하고<br>백엔드를 재시작하세요</small></div>`;
+        } else {
+          dd.innerHTML=`<div class="search-no-result">⚠️ ${msg}</div>`;
+        }
         return;
+      }
+      // 빈 결과일 때 debug 힌트 표시
+      if(d.debug){
+        console.warn('[검색 진단]', d.debug);
+        if(!d.debug.kakao_key_set){
+          dd.innerHTML=`<div class="search-no-result">⚠️ KAKAO_API_KEY 미설정<br><small style="color:#cc8888">backend/.env 파일에<br>KAKAO_API_KEY=키값 을 추가하고<br>백엔드를 재시작하세요</small></div>`;
+          return;
+        }
       }
       this._renderResults(d.results||[]);
     }catch(e){
