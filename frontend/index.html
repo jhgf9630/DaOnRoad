@@ -165,9 +165,10 @@ input::placeholder{color:#445566}
 
   <div class="panel" id="offWrap" style="display:none;padding:10px 14px">
     <div class="off-banner">
-      ⚠️ <b>백엔드 연결 실패</b><br>
-      <code>cd backend &amp;&amp; python main.py</code><br>
-      <small style="color:#cc8888">KAKAO_API_KEY 또는 TMAP_API_KEY 없이는<br>주소 검색이 동작하지 않습니다.</small>
+      ⚠️ <b>백엔드 서버에 연결할 수 없습니다.</b><br>
+      Electron 앱이 자동으로 시작하지 못했다면<br>
+      터미널에서 직접 실행해 주세요:<br>
+      <code>cd backend &amp;&amp; python main.py</code>
     </div>
   </div>
 
@@ -498,7 +499,7 @@ async function checkApi(){
   try{const r=await fetch(HLTH,{signal:AbortSignal.timeout(3000)});updateApiStatus(r.ok);}
   catch{updateApiStatus(false,'백엔드 미실행');}
 }
-setTimeout(checkApi,4000);setInterval(checkApi,30000);
+setTimeout(checkApi,6000);setInterval(checkApi,30000);
 
 // ═══════════════════════════════════════════════
 // 파일 업로드
