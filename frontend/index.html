@@ -319,6 +319,7 @@ const layerStop    = L.markerClusterGroup({maxClusterRadius:30,showCoverageOnHov
     return L.divIcon({html:`<div style="background:rgba(80,50,180,.85);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)">${n}</div>`,iconSize:[28,28],iconAnchor:[14,14],className:''});
   }}).addTo(map);
 
+const layerPreview = L.layerGroup().addTo(map); // 임시 미리보기 마커 전용
 const ML={lines:[]};
 
 // ═══════════════════════════════════════════════
@@ -596,17 +597,23 @@ function initAddFormAddr(){
   new AddressSearch('addFormAddrWrap',{
     placeholder:'출발지 주소 또는 장소명',
     onSelect: item=>{
-      // 확인 버튼 클릭 후 지도에 임시 출발지 마커 표시
-      layerVehicle.clearLayers();
+      // ★ previewLayer에 임시 마커 표시 (layerVehicle과 분리)
+      layerPreview.clearLayers();
       const icon=L.divIcon({
-        html:`<div style="background:#ffaa33;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.5)">🚌</div>`,
-        iconSize:[32,32],iconAnchor:[16,16],className:''
+        html:`<div style="background:#ffaa33;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;border:2px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.6)">🚌</div>`,
+        iconSize:[34,34],iconAnchor:[17,17],className:''
       });
       const m=L.marker([item.lat,item.lng],{icon})
-        .bindPopup(`<div><div class="pop-name" style="color:#ffaa33">🚌 출발지 미리보기</div><div class="pop-row">${item.name||item.address}</div><div class="pop-row" style="color:#8899bb;font-size:10px">${item.address}</div></div>`);
-      layerVehicle.addLayer(m);
+        .bindPopup(`<div>
+          <div class="pop-name" style="color:#ffaa33">🚌 출발지 미리보기</div>
+          <div class="pop-row">${item.name||item.address}</div>
+          <div class="pop-row" style="color:#8899bb;font-size:10px">${item.address}</div>
+          <div class="pop-row" style="color:#445566;font-size:10px">lat:${item.lat.toFixed(5)} lng:${item.lng.toFixed(5)}</div>
+        </div>`);
+      layerPreview.addLayer(m);
       m.openPopup();
-      renderVehicleMarkers(); // 기존 등록 차량도 함께 표시
+      map.setView([item.lat, item.lng], 14);
+      renderVehicleMarkers(); // 등록된 차량들도 함께 표시
     }
   });
 }
@@ -649,8 +656,9 @@ async function addVehicle(){
   document.getElementById('vCap').value='';
   as.clear();
 
+  layerPreview.clearLayers(); // 미리보기 마커 제거
   renderVList();
-  renderVehicleMarkers();
+  renderVehicleMarkers();    // 등록된 차량 마커 표시
 }
 
 function removeVehicle(busId){
@@ -675,13 +683,22 @@ function startEdit(busId){
       const as=new AddressSearch(editSearchId,{
         placeholder:'새 출발지 검색',
         onSelect:item=>{
-          // 지도에 미리보기
-          layerVehicle.clearLayers();
-          const icon=L.divIcon({html:`<div style="background:${COLORS[S.vehicles.indexOf(v)%COLORS.length]};width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)">🚌</div>`,iconSize:[30,30],iconAnchor:[15,15]});
-          const m=L.marker([item.lat,item.lng],{icon}).bindPopup(`<div><div class="pop-name">🚌 ${v.bus_id} 미리보기</div><div class="pop-row">${item.address}</div></div>`);
-          layerVehicle.addLayer(m);m.openPopup();
+          // ★ previewLayer에 표시 (layerVehicle 건드리지 않음)
+          layerPreview.clearLayers();
+          const vColor=COLORS[S.vehicles.indexOf(v)%COLORS.length];
+          const icon=L.divIcon({
+            html:`<div style="background:${vColor};width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)">🚌</div>`,
+            iconSize:[32,32],iconAnchor:[16,16],className:''
+          });
+          const m=L.marker([item.lat,item.lng],{icon})
+            .bindPopup(`<div>
+              <div class="pop-name" style="color:${vColor}">🚌 ${v.bus_id} 새 출발지</div>
+              <div class="pop-row">${item.address}</div>
+              <div class="pop-row" style="color:#445566;font-size:10px">lat:${item.lat.toFixed(5)} lng:${item.lng.toFixed(5)}</div>
+            </div>`);
+          layerPreview.addLayer(m);
+          m.openPopup();
           map.setView([item.lat,item.lng],14);
-          renderVehicleMarkers();
         }
       });
       // 기존값 표시
@@ -841,7 +858,7 @@ async function generateRoutes(){
     S.routes=d.routes;S.destination=d.destination;S.summary=d.summary;
 
     layerPax.clearLayers();layerVehicle.clearLayers();layerDest.clearLayers();
-    layerRoute.clearLayers();layerStop.clearLayers();ML.lines=[];
+    layerRoute.clearLayers();layerStop.clearLayers();layerPreview.clearLayers();ML.lines=[];
 
     renderRouteMap(d);
     renderResultPanel(d);
@@ -1001,7 +1018,7 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 function resetAll(){
   Object.assign(S,{passengers:[],vehicles:[],routes:null,destination:null,summary:null,editingId:null});
-  [layerPax,layerVehicle,layerDest,layerRoute,layerStop].forEach(l=>l.clearLayers());
+  [layerPax,layerVehicle,layerDest,layerRoute,layerStop,layerPreview].forEach(l=>l.clearLayers());
   ML.lines=[];
   map.setView([37.5665,126.9780],10);
   document.getElementById('paxPreview').innerHTML='';

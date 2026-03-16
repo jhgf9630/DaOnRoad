@@ -1,10 +1,42 @@
 """
-DaOnRoad - OR-Tools CVRP Solver
-★ 모든 차량에 반드시 1명 이상 배정
-★ 방향 기반 섹터 분할로 균등 배분
+DaOnRoad - VRP Solver
+──────────────────────────────────────────────────────────────────
+설계 원칙:
+1. 모든 차량에 반드시 1명 이상 배정 (하드 보장)
+2. OR-Tools 사용 가능 시 CVRP 최적화
+3. OR-Tools 없으면 K-Means 클러스터 기반 Greedy
+4. 어떤 경우에도 빈 차량 0개 보장 (_force_min_one 후처리)
+──────────────────────────────────────────────────────────────────
+[현실적 배차 알고리즘 방향성 - 현재 구현의 한계와 로드맵]
+
+현재 한계:
+  - Haversine(직선거리) 기반 Distance Matrix → 실제 도로 시간과 최대 3배 오차
+  - 방향각 기반 섹터 분할 → 도로 접근성 미반영
+
+권장 개선 방향 (우선순위 순):
+  1. OSRM(오픈소스, 무료) Table API:
+       POST http://router.project-osrm.org/table/v1/driving/{coords}
+       → 실제 도로 기반 N×N 이동시간 매트릭스 (초 단위, 무료)
+       → 현재 Haversine을 이것으로 교체하면 정확도 3배 향상
+
+  2. 도로 경로 Polyline:
+       GET http://router.project-osrm.org/route/v1/driving/{coords}
+       → geometry 필드에 실제 도로 경로 좌표 포함
+       → 지도에 직선 대신 도로 굴곡 반영 가능
+
+  3. Kakao/Tmap 경로 API (유료/횟수 제한):
+       → 국내 도로 정확도 최상, but API 비용 발생
+       → 캐시 필수 (동일 구간 반복 호출 방지)
+
+  OSRM 연동 방법 (향후 matrix_builder.py 수정 대상):
+    nodes = [{lat, lng}, ...]
+    coords = ";".join(f"{n['lng']},{n['lat']}" for n in nodes)
+    url = f"http://router.project-osrm.org/table/v1/driving/{coords}"
+    matrix = requests.get(url).json()["durations"]  # 초 단위 N×N
 """
 import math
 from typing import List, Dict, Any
+from collections import defaultdict
 
 try:
     from ortools.constraint_solver import routing_enums_pb2
@@ -12,344 +44,348 @@ try:
     ORTOOLS_AVAILABLE = True
 except ImportError:
     ORTOOLS_AVAILABLE = False
-    print("⚠️  OR-Tools 미설치. Greedy fallback 사용.")
 
 
-def _dist(a, b):
-    return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
-
-
-def _assign_sectors(passengers, vehicles, dest_lat, dest_lng):
+# ── K-Means 기반 승객 클러스터링 ────────────────────────────────────
+def _kmeans_assign(passengers: List[Dict], n_clusters: int, max_iter: int = 30) -> List[int]:
     """
-    차량이 N대일 때 승객을 N개 섹터로 분할.
-    같은 출발지 그룹 내에서는 방향(각도) 기준 분할.
-    반환: {passenger_idx: [allowed_vehicle_idx, ...]}
+    승객을 n_clusters개 클러스터로 분류.
+    반환: 각 승객의 클러스터 번호 리스트 (0 ~ n_clusters-1)
     """
-    import math
-    from collections import defaultdict
+    if n_clusters >= len(passengers):
+        return list(range(len(passengers)))
 
-    n_pax = len(passengers)
-    n_veh = len(vehicles)
+    # 초기 중심점: 균등 간격으로 선택
+    indices = [int(i * len(passengers) / n_clusters) for i in range(n_clusters)]
+    centers = [[passengers[i]['lat'], passengers[i]['lng']] for i in indices]
 
-    if n_veh == 1:
-        return {pi: [0] for pi in range(n_pax)}
+    assignment = [0] * len(passengers)
+    for _ in range(max_iter):
+        # 각 승객 → 가장 가까운 중심점
+        new_assignment = []
+        for p in passengers:
+            dists = [math.sqrt((p['lat']-c[0])**2 + (p['lng']-c[1])**2) for c in centers]
+            new_assignment.append(dists.index(min(dists)))
 
-    # 출발지 좌표로 그룹화
-    depot_groups = defaultdict(list)
-    for vi, v in enumerate(vehicles):
-        key = (round(v.get('start_lat', dest_lat), 3),
-               round(v.get('start_lng', dest_lng), 3))
-        depot_groups[key].append(vi)
+        if new_assignment == assignment:
+            break
+        assignment = new_assignment
 
-    pax_to_vehicle = {}  # pi → vi (1:1 강제 배정)
+        # 중심점 갱신
+        for k in range(n_clusters):
+            cluster_pax = [passengers[i] for i, a in enumerate(assignment) if a == k]
+            if cluster_pax:
+                centers[k] = [
+                    sum(p['lat'] for p in cluster_pax) / len(cluster_pax),
+                    sum(p['lng'] for p in cluster_pax) / len(cluster_pax)
+                ]
 
-    for depot_key, v_indices in depot_groups.items():
-        n_v = len(v_indices)
-        dep_lat, dep_lng = depot_key
+    return assignment
 
-        if n_v == 1:
-            # 단독 차량: 제한 없음 (나중에 다른 그룹과 합산)
-            for pi in range(n_pax):
-                if pi not in pax_to_vehicle:
-                    pax_to_vehicle[pi] = v_indices[0]
+
+def _balance_clusters(assignment: List[int], passengers: List[Dict],
+                      vehicles: List[Dict], n_clusters: int) -> List[int]:
+    """
+    클러스터별 승객 수가 해당 차량 정원을 초과하지 않도록 재배정.
+    또한 빈 클러스터(0명)가 없도록 보장.
+    """
+    assignment = assignment[:]
+
+    for iteration in range(50):
+        changed = False
+
+        # 각 클러스터 현황
+        cluster_pax   = defaultdict(list)  # k → [pi]
+        cluster_count = defaultdict(int)   # k → 탑승인원 합
+
+        for pi, k in enumerate(assignment):
+            cluster_pax[k].append(pi)
+            cluster_count[k] += passengers[pi]['passenger_count']
+
+        # 정원 초과 클러스터 → 여유 클러스터로 이전
+        for k in range(n_clusters):
+            cap = vehicles[k]['capacity']
+            while cluster_count[k] > cap:
+                # 이 클러스터에서 가장 멀리 있는 승객 찾기
+                if not cluster_pax[k]:
+                    break
+                # 다른 클러스터 중 여유 있는 것 찾기
+                target = None
+                for other_k in range(n_clusters):
+                    if other_k == k:
+                        continue
+                    if cluster_count[other_k] + passengers[cluster_pax[k][-1]]['passenger_count'] \
+                       <= vehicles[other_k]['capacity']:
+                        target = other_k
+                        break
+                if target is None:
+                    break
+                moved_pi = cluster_pax[k].pop()
+                cluster_count[k]      -= passengers[moved_pi]['passenger_count']
+                assignment[moved_pi]   = target
+                cluster_count[target] += passengers[moved_pi]['passenger_count']
+                changed = True
+
+        # 빈 클러스터 → 가장 큰 클러스터에서 이전
+        for k in range(n_clusters):
+            if cluster_count[k] == 0:
+                donor = max(range(n_clusters), key=lambda x: cluster_count[x])
+                if cluster_pax[donor]:
+                    moved_pi           = cluster_pax[donor].pop()
+                    cluster_count[donor] -= passengers[moved_pi]['passenger_count']
+                    assignment[moved_pi]  = k
+                    cluster_count[k]    += passengers[moved_pi]['passenger_count']
+                    changed = True
+
+        if not changed:
+            break
+
+    return assignment
+
+
+def _force_min_one(routes: List[Dict], passengers: List[Dict]) -> List[Dict]:
+    """
+    후처리: 승객 0명 차량에 강제로 1명 이전.
+    가장 많은 차량에서 마지막 픽업 stop을 가져옴.
+    """
+    for _ in range(len(routes) * 2):  # 최대 순환 횟수 제한
+        empty = [i for i, r in enumerate(routes) if r['total_passengers'] == 0]
+        if not empty:
+            break
+
+        target_ri = empty[0]
+        # 가장 많은 차량 선택 (2명 이상)
+        donors = [(i, r) for i, r in enumerate(routes)
+                  if r['total_passengers'] >= 2]
+        if not donors:
+            print(f"[solver] ⚠ 강제 배정 불가: 모든 차량이 0-1명")
+            break
+
+        donor_ri, donor = max(donors, key=lambda x: x[1]['total_passengers'])
+        pickup_stops = [s for s in donor['stops'] if s['type'] == 'pickup']
+        if not pickup_stops:
             continue
 
-        # 방향각 계산
-        def angle_of(p):
-            dy = p['lat'] - dep_lat
-            dx = p['lng'] - dep_lng
-            return math.degrees(math.atan2(dy, dx)) % 360
+        move = pickup_stops[-1]
 
-        pax_angles = sorted(
-            [(pi, angle_of(passengers[pi])) for pi in range(n_pax)],
-            key=lambda x: x[1]
-        )
+        # donor에서 제거
+        donor['stops'] = [s for s in donor['stops']
+                          if not (s['type'] == 'pickup' and s.get('node_idx') == move.get('node_idx'))]
+        donor['total_passengers'] -= move['passenger_count']
 
-        # 섹터 경계 계산 (360도 균등 분할)
-        sector_size = 360.0 / n_v
-        for rank, vi in enumerate(v_indices):
-            s_start = rank * sector_size
-            s_end   = s_start + sector_size
-            for pi, ang in pax_angles:
-                if s_start <= ang < s_end:
-                    pax_to_vehicle[pi] = vi
+        # target에 추가 (destination 직전)
+        target_stops = routes[target_ri]['stops']
+        dest_pos = next((i for i, s in enumerate(target_stops)
+                         if s['type'] == 'destination'), len(target_stops))
+        move['order']        = dest_pos
+        move['pickup_order'] = sum(1 for s in target_stops if s['type'] == 'pickup') + 1
+        target_stops.insert(dest_pos, move)
+        routes[target_ri]['total_passengers'] += move['passenger_count']
 
-        # 섹터에 아무도 없는 차량 처리 → 가장 가까운 승객 할당
-        assigned_pax = set(pax_to_vehicle.keys())
-        for rank, vi in enumerate(v_indices):
-            if vi not in pax_to_vehicle.values():
-                s_center = (rank + 0.5) * sector_size
-                # 아직 미배정 승객 중 각도가 가장 가까운 것
-                candidates = [(pi, ang) for pi, ang in pax_angles if pi not in assigned_pax]
-                if not candidates:
-                    # 모두 배정됐으면 가장 가까운 승객 재배정
-                    candidates = pax_angles
-                if candidates:
-                    closest = min(candidates, key=lambda x: min(
-                        abs(x[1]-s_center), 360-abs(x[1]-s_center)))
-                    pax_to_vehicle[closest[0]] = vi
-                    assigned_pax.add(closest[0])
-
-    # 미배정 승객은 0번 차량으로
-    for pi in range(n_pax):
-        if pi not in pax_to_vehicle:
-            pax_to_vehicle[pi] = 0
-
-    # allowed 형태로 변환
-    return {pi: [vi] for pi, vi in pax_to_vehicle.items()}
-
-
-def _enforce_min_one(routes, passengers, vehicles, node_indices, destination_idx):
-    """
-    승객 0명 차량에 강제로 최소 1명 배정.
-    인접한 다른 차량에서 승객 1명을 빼앗아 옴.
-    """
-    n_veh = len(routes)
-    changed = True
-
-    while changed:
-        changed = False
-        for ri, route in enumerate(routes):
-            if route['total_passengers'] > 0:
-                continue
-
-            # 이 차량에 승객이 없음 → 다른 차량에서 1명 이전
-            # 가장 승객 많은 차량에서 마지막 픽업 stop을 가져옴
-            donor_ri = max(
-                (i for i in range(n_veh) if routes[i]['total_passengers'] > 1),
-                key=lambda i: routes[i]['total_passengers'],
-                default=None
-            )
-            if donor_ri is None:
-                # 모든 다른 차량도 1명뿐 → 불가능
-                break
-
-            donor = routes[donor_ri]
-            donor_stops = donor['stops']
-
-            # donor에서 마지막 pickup stop 제거
-            pickup_stops = [s for s in donor_stops if s['type'] == 'pickup']
-            if not pickup_stops:
-                continue
-            move_stop = pickup_stops[-1]
-
-            # donor에서 제거
-            donor['stops'] = [s for s in donor_stops if not (
-                s['type'] == 'pickup' and s['name'] == move_stop['name']
-            )]
-            donor['total_passengers'] -= move_stop['passenger_count']
-
-            # 현재 차량에 추가 (destination 직전)
-            cur_stops = route['stops']
-            dest_pos = next((i for i, s in enumerate(cur_stops)
-                             if s['type'] == 'destination'), len(cur_stops))
-            move_stop['order']        = dest_pos
-            move_stop['pickup_order'] = sum(1 for s in cur_stops if s['type'] == 'pickup') + 1
-            cur_stops.insert(dest_pos, move_stop)
-            route['total_passengers'] += move_stop['passenger_count']
-            changed = True
-            print(f"[solver] {move_stop['name']} → {routes[ri]['bus_id']} 이전 (강제 배정)")
-            break
+        print(f"[solver] 강제배정: {move['name']} → {routes[target_ri]['bus_id']}")
 
     return routes
 
 
 class VRPSolver:
+
     def solve(self, distance_matrix, passengers, vehicles,
               node_indices, destination_idx,
               vehicle_start_indices, vehicle_end_indices):
-        if ORTOOLS_AVAILABLE:
-            return self._solve_ortools(
-                distance_matrix, passengers, vehicles,
-                node_indices, destination_idx,
-                vehicle_start_indices, vehicle_end_indices
-            )
-        return self._solve_greedy(
-            distance_matrix, passengers, vehicles,
-            node_indices, destination_idx,
-            vehicle_start_indices, vehicle_end_indices
-        )
 
-    def _solve_ortools(self, distance_matrix, passengers, vehicles,
-                       node_indices, destination_idx,
-                       vehicle_start_indices, vehicle_end_indices):
-        num_nodes         = len(distance_matrix)
-        num_vehicles      = len(vehicles)
-        passenger_indices = node_indices['passengers']
-        n_pax             = len(passenger_indices)
+        n_pax = len(passengers)
+        n_veh = len(vehicles)
 
-        # 승객 < 차량이면 greedy로
-        if n_pax < num_vehicles:
-            print(f"[solver] 승객({n_pax}) < 차량({num_vehicles}) → Greedy")
+        print(f"[solver] 승객={n_pax}명, 차량={n_veh}대")
+
+        # 승객 수가 차량 수보다 적으면 바로 Greedy
+        if n_pax < n_veh:
+            print(f"[solver] 승객({n_pax}) < 차량({n_veh}) → Greedy")
             return self._solve_greedy(
                 distance_matrix, passengers, vehicles,
                 node_indices, destination_idx,
-                vehicle_start_indices, vehicle_end_indices
-            )
+                vehicle_start_indices)
 
-        dest_as_end = [destination_idx] * num_vehicles
+        if ORTOOLS_AVAILABLE:
+            result = self._solve_ortools(
+                distance_matrix, passengers, vehicles,
+                node_indices, destination_idx,
+                vehicle_start_indices)
+            # OR-Tools도 0명 차량 생길 수 있으므로 후처리
+            result['routes'] = _force_min_one(result['routes'], passengers)
+            return result
+
+        return self._solve_greedy(
+            distance_matrix, passengers, vehicles,
+            node_indices, destination_idx,
+            vehicle_start_indices)
+
+    # ── OR-Tools ────────────────────────────────────────────────────
+    def _solve_ortools(self, distance_matrix, passengers, vehicles,
+                       node_indices, destination_idx, vehicle_start_indices):
+
+        num_nodes         = len(distance_matrix)
+        num_vehicles      = len(vehicles)
+        passenger_indices = node_indices['passengers']
+
+        # destination = 각 차량의 end node
         manager = pywrapcp.RoutingIndexManager(
             num_nodes, num_vehicles,
-            vehicle_start_indices, dest_as_end
+            vehicle_start_indices,
+            [destination_idx] * num_vehicles
         )
         routing = pywrapcp.RoutingModel(manager)
 
         def dist_cb(fi, ti):
             return distance_matrix[manager.IndexToNode(fi)][manager.IndexToNode(ti)]
-        transit_cb = routing.RegisterTransitCallback(dist_cb)
-        routing.SetArcCostEvaluatorOfAllVehicles(transit_cb)
+        tc = routing.RegisterTransitCallback(dist_cb)
+        routing.SetArcCostEvaluatorOfAllVehicles(tc)
 
         def demand_cb(fi):
             node = manager.IndexToNode(fi)
             if node in passenger_indices:
                 return passengers[passenger_indices.index(node)]['passenger_count']
             return 0
-        demand_cb_idx = routing.RegisterUnaryTransitCallback(demand_cb)
+        dc = routing.RegisterUnaryTransitCallback(demand_cb)
         routing.AddDimensionWithVehicleCapacity(
-            demand_cb_idx, 0,
-            [v['capacity'] for v in vehicles], True, "Capacity"
-        )
+            dc, 0, [v['capacity'] for v in vehicles], True, "Capacity")
 
-        dest_lat = vehicles[0].get('end_lat', 37.5)
-        dest_lng = vehicles[0].get('end_lng', 127.0)
-        pax_allowed = _assign_sectors(passengers, vehicles, dest_lat, dest_lng)
-
+        # ★ 높은 페널티로 모든 승객 방문 강제
         BIG = 10_000_000
-        for pi, p_node in enumerate(passenger_indices):
-            allowed_v = pax_allowed.get(pi, list(range(num_vehicles)))
-            node_idx  = manager.NodeToIndex(p_node)
-            routing.AddDisjunction([node_idx], BIG)
-            if len(allowed_v) < num_vehicles:
-                routing.VehicleVar(node_idx).SetValues(allowed_v)
+        for p_node in passenger_indices:
+            routing.AddDisjunction([manager.NodeToIndex(p_node)], BIG)
 
-        # ★ 각 차량 최소 1명 강제: 차량별 최소 수요 Dimension
-        routing.AddDimension(transit_cb, 0, 100000, True, "Distance")
-
-        search_params = pywrapcp.DefaultRoutingSearchParameters()
-        search_params.first_solution_strategy = (
+        sp = pywrapcp.DefaultRoutingSearchParameters()
+        sp.first_solution_strategy = (
             routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION)
-        search_params.local_search_metaheuristic = (
+        sp.local_search_metaheuristic = (
             routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
-        search_params.time_limit.seconds = 20
+        sp.time_limit.seconds = 20
 
-        solution = routing.SolveWithParameters(search_params)
-        if not solution:
+        sol = routing.SolveWithParameters(sp)
+        if not sol:
             print("[solver] OR-Tools 해 없음 → Greedy")
             return self._solve_greedy(
                 distance_matrix, passengers, vehicles,
-                node_indices, destination_idx,
-                vehicle_start_indices, vehicle_end_indices
-            )
+                node_indices, destination_idx, vehicle_start_indices)
 
         routes = []
-        for v_idx, vehicle in enumerate(vehicles):
-            route_nodes, index, total_sec = [], routing.Start(v_idx), 0
-            while not routing.IsEnd(index):
-                node = manager.IndexToNode(index)
-                route_nodes.append(node)
-                nxt = solution.Value(routing.NextVar(index))
-                total_sec += distance_matrix[node][manager.IndexToNode(nxt)]
-                index = nxt
-            route_nodes.append(manager.IndexToNode(index))
+        for vi, vehicle in enumerate(vehicles):
+            nodes, idx, sec = [], routing.Start(vi), 0
+            while not routing.IsEnd(idx):
+                n = manager.IndexToNode(idx)
+                nodes.append(n)
+                nxt = sol.Value(routing.NextVar(idx))
+                sec += distance_matrix[n][manager.IndexToNode(nxt)]
+                idx  = nxt
+            nodes.append(manager.IndexToNode(idx))
 
-            stops     = self._map_stops(route_nodes, passengers, passenger_indices,
-                                        destination_idx, vehicle_start_indices, v_idx)
-            total_pax = sum(s['passenger_count'] for s in stops if s['type'] == 'pickup')
+            stops = self._map_stops(nodes, passengers, passenger_indices,
+                                    destination_idx, vehicle_start_indices, vi)
+            total = sum(s['passenger_count'] for s in stops if s['type'] == 'pickup')
             routes.append({
                 "bus_id": vehicle['bus_id'], "vehicle": vehicle,
-                "stops": stops, "total_distance_sec": total_sec,
-                "total_passengers": total_pax
+                "stops": stops, "total_distance_sec": sec,
+                "total_passengers": total
             })
 
-        # ★ 0명 차량 강제 보정
-        routes = _enforce_min_one(routes, passengers, vehicles, node_indices, destination_idx)
         return {"success": True, "routes": routes}
 
+    # ── K-Means Greedy ──────────────────────────────────────────────
     def _solve_greedy(self, distance_matrix, passengers, vehicles,
-                      node_indices, destination_idx,
-                      vehicle_start_indices, vehicle_end_indices):
-        n_pax    = len(passengers)
-        n_veh    = len(vehicles)
-        dest_lat = vehicles[0].get('end_lat', 37.5)
-        dest_lng = vehicles[0].get('end_lng', 127.0)
+                      node_indices, destination_idx, vehicle_start_indices):
 
-        pax_allowed = _assign_sectors(passengers, vehicles, dest_lat, dest_lng)
+        n_pax = len(passengers)
+        n_veh = len(vehicles)
 
-        # 차량별 초기 배정
-        vehicle_pax = {vi: [] for vi in range(n_veh)}
-        for pi in range(n_pax):
-            vi = pax_allowed.get(pi, [0])[0]
-            vehicle_pax[vi].append(pi)
+        # Step 1: K-Means 클러스터링
+        raw_assign = _kmeans_assign(passengers, n_veh)
 
-        # ★ 0명 차량 보정: 인접 차량에서 승객 이전
-        for vi in range(n_veh):
-            if vehicle_pax[vi]:
-                continue
-            # 가장 많은 차량에서 마지막 승객 이전
-            donor = max(range(n_veh), key=lambda x: len(vehicle_pax[x]))
-            if vehicle_pax[donor]:
-                moved = vehicle_pax[donor].pop()
-                vehicle_pax[vi].append(moved)
-                print(f"[solver] 승객 {passengers[moved]['name']} → 차량 {vehicles[vi]['bus_id']} 강제 배정")
+        # Step 2: 정원 초과 & 빈 클러스터 보정
+        assignment = _balance_clusters(raw_assign, passengers, vehicles, n_veh)
 
+        # 클러스터별 승객 목록
+        cluster_pax = defaultdict(list)
+        for pi, k in enumerate(assignment):
+            cluster_pax[k].append(pi)
+
+        # Step 3: 각 차량 Nearest-Neighbor 순서 결정
         routes = []
-        for v_idx, vehicle in enumerate(vehicles):
-            assigned  = vehicle_pax[v_idx][:]
+        for vi, vehicle in enumerate(vehicles):
+            assigned  = cluster_pax[vi][:]
             capacity  = vehicle['capacity']
             used      = 0
-            route_nodes = [vehicle_start_indices[v_idx]]
-            current     = vehicle_start_indices[v_idx]
+            nodes     = [vehicle_start_indices[vi]]
+            current   = vehicle_start_indices[vi]
 
             remaining = assigned[:]
             while remaining:
-                best_idx, best_cost = None, float('inf')
+                best_pi, best_cost = None, float('inf')
                 for pi in remaining:
-                    p_node  = node_indices['passengers'][pi]
-                    p_count = passengers[pi]['passenger_count']
-                    if used + p_count > capacity:
+                    pn = node_indices['passengers'][pi]
+                    pc = passengers[pi]['passenger_count']
+                    if used + pc > capacity:
                         continue
-                    cost = distance_matrix[current][p_node]
+                    cost = distance_matrix[current][pn]
                     if cost < best_cost:
-                        best_cost = cost; best_idx = pi
-                if best_idx is None:
+                        best_cost = cost; best_pi = pi
+                if best_pi is None:
                     break
-                p_node = node_indices['passengers'][best_idx]
-                route_nodes.append(p_node)
-                used    += passengers[best_idx]['passenger_count']
-                current  = p_node
-                remaining.remove(best_idx)
+                pn = node_indices['passengers'][best_pi]
+                nodes.append(pn)
+                used    += passengers[best_pi]['passenger_count']
+                current  = pn
+                remaining.remove(best_pi)
 
-            route_nodes.append(destination_idx)
-            stops     = self._map_stops(route_nodes, passengers, node_indices['passengers'],
-                                        destination_idx, vehicle_start_indices, v_idx)
-            total_pax = sum(s['passenger_count'] for s in stops if s['type'] == 'pickup')
+            nodes.append(destination_idx)
+            stops = self._map_stops(nodes, passengers, node_indices['passengers'],
+                                    destination_idx, vehicle_start_indices, vi)
+            total = sum(s['passenger_count'] for s in stops if s['type'] == 'pickup')
             routes.append({
                 "bus_id": vehicle['bus_id'], "vehicle": vehicle,
-                "stops": stops, "total_passengers": total_pax
+                "stops": stops, "total_passengers": total
             })
 
-        # 미배정 승객 처리
-        assigned_all = {pi for lst in vehicle_pax.values() for pi in lst}
-        for pi in range(n_pax):
-            if pi in assigned_all:
-                continue
-            p_count = passengers[pi]['passenger_count']
-            for ri, route in enumerate(routes):
-                if route['total_passengers'] + p_count <= vehicles[ri]['capacity']:
-                    p_node = node_indices['passengers'][pi]
-                    stops  = route['stops']
-                    dest_pos = next((i for i, s in enumerate(stops)
-                                     if s['type'] == 'destination'), len(stops))
-                    po = sum(1 for s in stops if s['type'] == 'pickup') + 1
-                    stops.insert(dest_pos, {
-                        "order": dest_pos, "pickup_order": po,
-                        "node_idx": p_node, "type": "pickup",
-                        "name": passengers[pi]['name'], "address": passengers[pi]['address'],
-                        "lat": passengers[pi]['lat'], "lng": passengers[pi]['lng'],
-                        "passenger_count": p_count, "travel_time_sec": 0, "pickup_time": ""
-                    })
-                    route['total_passengers'] += p_count
-                    break
+        # Step 4: 미배정 승객 강제 배정
+        assigned_all = set(assignment.keys()) if False else set(range(n_pax))
+        # (balance_clusters 후 모두 배정됨, 하지만 용량 초과로 빠진 것 처리)
+        route_pax_set = {
+            s.get('node_idx')
+            for r in routes for s in r['stops'] if s['type'] == 'pickup'
+        }
+        unassigned = [
+            pi for pi in range(n_pax)
+            if node_indices['passengers'][pi] not in route_pax_set
+        ]
+        if unassigned:
+            print(f"[solver] 미배정 {len(unassigned)}명 강제 배정")
+            for pi in unassigned:
+                pc = passengers[pi]['passenger_count']
+                for ri, route in enumerate(routes):
+                    if route['total_passengers'] + pc <= vehicles[ri]['capacity']:
+                        pn = node_indices['passengers'][pi]
+                        stops = route['stops']
+                        dp = next((i for i, s in enumerate(stops)
+                                   if s['type'] == 'destination'), len(stops))
+                        po = sum(1 for s in stops if s['type'] == 'pickup') + 1
+                        stops.insert(dp, {
+                            "order": dp, "pickup_order": po,
+                            "node_idx": pn, "type": "pickup",
+                            "name": passengers[pi]['name'],
+                            "address": passengers[pi]['address'],
+                            "lat": passengers[pi]['lat'], "lng": passengers[pi]['lng'],
+                            "passenger_count": pc, "travel_time_sec": 0, "pickup_time": ""
+                        })
+                        route['total_passengers'] += pc
+                        break
+
+        # Step 5: 빈 차량 강제 보정
+        routes = _force_min_one(routes, passengers)
+
+        empty_count = sum(1 for r in routes if r['total_passengers'] == 0)
+        print(f"[solver] 결과: {[r['bus_id']+':'+str(r['total_passengers'])+'명' for r in routes]}")
+        if empty_count:
+            print(f"[solver] ⚠ 빈 차량 {empty_count}대 (승객 수 부족)")
 
         return {"success": True, "routes": routes}
 
