@@ -183,8 +183,9 @@ async def generate_route(request: RouteRequest):
             raise HTTPException(500, "시간 계산 결과가 비어있습니다.")
 
         return {
-            "success": True,
-            "routes":  scheduled,
+            "success":       True,
+            "routes":        scheduled,
+            "matrix_source": matrix_result.get("matrix_source", "haversine"),
             "destination": {
                 "address":      request.destination,
                 "lat":          dest_lat,
@@ -240,6 +241,20 @@ async def debug_key():
 
     return result
 
+
+
+@router.get("/osrm-status")
+async def osrm_status():
+    """OSRM 서버 연결 상태 + 설정 안내"""
+    import os
+    from routing.osrm_service import check_osrm_health
+    health = check_osrm_health()
+    health["hint"] = (
+        "OSRM을 활성화하려면 backend/.env에 추가: OSRM_BASE_URL=http://router.project-osrm.org"
+        if not health["env_set"]
+        else "OSRM 활성화됨"
+    )
+    return health
 
 @router.delete("/cache")
 async def clear_cache():

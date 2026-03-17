@@ -877,60 +877,106 @@ async function generateRoutes(){
 // 지도 렌더링
 // ═══════════════════════════════════════════════
 function renderRouteMap(data){
-  const dest=data.destination;
-  const bounds=[];
+  const dest    = data.destination;
+  const bounds  = [];
+  const hasOSRM = data.matrix_source && data.matrix_source.startsWith('osrm');
 
-  if(dest?.lat&&dest?.lng){
-    const icon=L.divIcon({
+  // ── 도착지 마커 ────────────────────────────────────────────────
+  if(dest?.lat && dest?.lng){
+    const destIcon = L.divIcon({
       html:`<div style="background:linear-gradient(135deg,#ff3366,#cc1144);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,.5)">🏁</div>`,
-      iconSize:[36,36],iconAnchor:[18,18],className:''
+      iconSize:[36,36], iconAnchor:[18,18], className:''
     });
-    const dm=L.marker([dest.lat,dest.lng],{icon})
-      .bindPopup(`<div><div class="pop-name">🏁 도착지</div><div class="pop-row">${dest.address}</div><div class="pop-time">⏰ ${dest.arrival_time}</div></div>`);
-    layerDest.addLayer(dm);
+    L.marker([dest.lat,dest.lng],{icon:destIcon})
+      .bindPopup(`<div>
+        <div class="pop-name">🏁 도착지</div>
+        <div class="pop-row">${dest.address}</div>
+        <div class="pop-time">⏰ ${dest.arrival_time}</div>
+        <div class="pop-row" style="font-size:10px;color:${hasOSRM?'#22cc77':'#ffaa33'}">
+          ${hasOSRM?'✅ 실제 도로 경로':'⚠ 직선 경로 (OSRM 미설정)'}
+        </div>
+      </div>`)
+      .addTo(layerDest);
     bounds.push([dest.lat,dest.lng]);
   }
 
+  // ── 버스별 렌더링 ───────────────────────────────────────────────
   data.routes.forEach((route,ri)=>{
-    const color=COLORS[ri%COLORS.length];
-    const lineCoords=[];
+    const color = COLORS[ri % COLORS.length];
 
+    // 픽업 정류장 마커
     route.stops.forEach(stop=>{
-      if(stop.type!=='pickup')return;
-      const lat=parseFloat(stop.lat),lng=parseFloat(stop.lng);
-      if(isNaN(lat)||isNaN(lng)){console.warn(`[지도] ${stop.name} 좌표 없음`);return;}
-      lineCoords.push([lat,lng]);
+      if(stop.type !== 'pickup') return;
+      const lat = parseFloat(stop.lat), lng = parseFloat(stop.lng);
+      if(isNaN(lat)||isNaN(lng)){ console.warn('[지도] 좌표 없음:', stop.name); return; }
       bounds.push([lat,lng]);
-
-      // ★ 정사각형 없는 순수 원형 픽업 마커
-      const icon=L.divIcon({
+      const icon = L.divIcon({
         html:`<div style="background:${color};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:bold;border:2px solid rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.5)">${stop.pickup_order||'?'}</div>`,
-        iconSize:[26,26],iconAnchor:[13,13],
-        className:''  // ★ 흰 정사각형 배경 제거
+        iconSize:[26,26], iconAnchor:[13,13], className:''
       });
-      const m=L.marker([lat,lng],{icon}).bindPopup(
-        `<div><div class="pop-bus" style="background:${color}">${route.bus_id}</div><div class="pop-name">👤 ${stop.name}</div><div class="pop-row">${stop.address}</div><div class="pop-time">⏰ ${stop.pickup_time||'-'}</div><div class="pop-row">탑승: <b style="color:#ffbb44">${stop.passenger_count}명</b></div></div>`
-      );
-      layerStop.addLayer(m);
+      L.marker([lat,lng],{icon})
+        .bindPopup(`<div>
+          <div class="pop-bus" style="background:${color}">${route.bus_id}</div>
+          <div class="pop-name">👤 ${stop.name}</div>
+          <div class="pop-row">${stop.address}</div>
+          <div class="pop-time">⏰ ${stop.pickup_time||'-'}</div>
+          <div class="pop-row">탑승: <b style="color:#ffbb44">${stop.passenger_count}명</b></div>
+        </div>`)
+        .addTo(layerStop);
     });
 
-    if(dest?.lat&&dest?.lng)lineCoords.push([dest.lat,dest.lng]);
+    // ★ 경로 Polyline 그리기
+    const polylines = route.polylines;
 
-    if(lineCoords.length>=2){
-      const line=L.polyline(lineCoords,{color,weight:3.5,opacity:.85,lineCap:'round',lineJoin:'round'});
-      layerRoute.addLayer(line);
-      ML.lines.push({line,idx:ri});
+    if(polylines && polylines.length > 0){
+      // OSRM 실제 도로: 구간별로 개별 Polyline
+      polylines.forEach(segCoords=>{
+        if(!segCoords || segCoords.length < 2) return;
+        const line = L.polyline(segCoords,{
+          color, weight:3.5, opacity:0.85,
+          lineCap:'round', lineJoin:'round', smoothFactor:1
+        });
+        layerRoute.addLayer(line);
+        ML.lines.push({line, idx:ri});
+        segCoords.forEach(c=>bounds.push(c));
+      });
+    } else {
+      // polylines 없음 → 직선 fallback (파선으로 구분)
+      console.warn('[지도]', route.bus_id, 'polylines 없음 → 직선 fallback');
+      const lineCoords=[];
+      route.stops.forEach(s=>{
+        if(s.type !== 'pickup') return;
+        const lat=parseFloat(s.lat), lng=parseFloat(s.lng);
+        if(!isNaN(lat)&&!isNaN(lng)) lineCoords.push([lat,lng]);
+      });
+      if(dest?.lat&&dest?.lng) lineCoords.push([dest.lat,dest.lng]);
+      if(lineCoords.length>=2){
+        const line=L.polyline(lineCoords,{
+          color, weight:2.5, opacity:0.6,
+          lineCap:'round', lineJoin:'round', dashArray:'8,5'
+        });
+        layerRoute.addLayer(line);
+        ML.lines.push({line, idx:ri});
+      }
     }
   });
 
-  // 차량 출발지 마커 재표시
+  // OSRM 사용 여부 알림 (첫 생성 시)
+  if(data.routes.length > 0 && !window._routeAlerted){
+    window._routeAlerted = true;
+    const src = data.matrix_source || 'haversine';
+    if(src === 'haversine'){
+      setTimeout(()=>toast('⚠ 직선 경로 표시 중\n실제 도로 경로: .env에 OSRM_BASE_URL 설정', 'warn'), 500);
+    } else {
+      setTimeout(()=>toast('✅ 실제 도로 기반 경로', 'info'), 500);
+    }
+  }
+
   renderVehicleMarkers();
-  if(bounds.length)map.fitBounds(bounds,{padding:[50,50]});
+  if(bounds.length) map.fitBounds(bounds,{padding:[50,50]});
+  else map.setView([37.5665,126.9780],10);
 }
 
-// ═══════════════════════════════════════════════
-// 노선 탭
-// ═══════════════════════════════════════════════
 function renderRtabs(routes){
   document.getElementById('routePanel').style.display='block';
   document.getElementById('rtabs').innerHTML=`
