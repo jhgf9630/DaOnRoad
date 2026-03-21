@@ -41,7 +41,10 @@
           "!**/__pycache__/**",
           "!cache/**",
           "!*.pyc",
-          "!.env"
+          "!.env",
+          "!.env.example",
+          "!Dockerfile",
+          "!.dockerignore"
         ]
       }
     ],
