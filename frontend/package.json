@@ -4,22 +4,22 @@
   "description": "DaOnRoad - 버스 노선 최적화 시스템",
   "main": "src/main.js",
   "scripts": {
-    "start":     "electron .",
-    "dev":       "electron . --dev",
-    "build":     "electron-builder --win",
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac"
   },
   "devDependencies": {
-    "electron":         "^31.0.0",
+    "electron": "^31.0.0",
     "electron-builder": "^24.0.0"
   },
   "build": {
-    "appId":       "com.daonroad.app",
+    "appId": "com.daonroad.app",
     "productName": "DaOnRoad",
-    "copyright":   "Copyright © 2025 DaOnRoad",
+    "copyright": "Copyright © 2025 DaOnRoad",
     "directories": {
-      "output":    "../dist",
+      "output": "../dist",
       "buildResources": "assets"
     },
     "files": [
@@ -30,11 +30,11 @@
     "extraResources": [
       {
         "from": "../docker-compose.yml",
-        "to":   "docker-compose.yml"
+        "to": "docker-compose.yml"
       },
       {
         "from": "../backend",
-        "to":   "backend",
+        "to": "backend",
         "filter": [
           "**/*",
           "!venv/**",
@@ -46,21 +46,40 @@
       }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "icon": "assets/DaOnRoad.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/DaOnRoad.ico",
+      "forceCodeSigning": false
     },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "icon": "assets/DaOnRoad.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon":   "assets/DaOnRoad.ico",
+      "installerIcon": "assets/DaOnRoad.ico",
       "uninstallerIcon": "assets/DaOnRoad.ico",
-      "shortcutName":    "DaOnRoad",
+      "shortcutName": "DaOnRoad",
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
-  }
+      "createStartMenuShortcut": true,
+      "unicode": true
+    },
+    "compression": "normal"
+  },
+  "author": "DaOnRoad"
 }
