@@ -51,6 +51,23 @@ function isDockerAvailable() {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// docker compose 명령어 자동 감지
+// 신버전: ["docker", "compose", ...]
+// 구버전: ["docker-compose", ...]
+// ─────────────────────────────────────────────────────────────────
+function getComposeCmd() {
+  // V2: docker compose
+  const v2 = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore', timeout: 3000 });
+  if (v2.status === 0) return { cmd: 'docker', args: ['compose'] };
+
+  // V1: docker-compose
+  const v1 = spawnSync('docker-compose', ['version'], { stdio: 'ignore', timeout: 3000 });
+  if (v1.status === 0) return { cmd: 'docker-compose', args: [] };
+
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Docker Compose 실행
 // ─────────────────────────────────────────────────────────────────
 function startDockerCompose() {
@@ -63,16 +80,24 @@ function startDockerCompose() {
     return false;
   }
 
+  const compose = getComposeCmd();
+  if (!compose) {
+    console.error('[DaOnRoad] docker compose 명령어를 찾을 수 없습니다.');
+    showDockerError();
+    return false;
+  }
+
   // .env 파일 존재 확인
   const envPath = path.join(projectRoot, 'backend', '.env');
   if (!fs.existsSync(envPath)) {
     console.warn('[DaOnRoad] backend/.env 파일이 없습니다. .env.example을 복사하세요.');
   }
 
-  console.log('[DaOnRoad] Docker Compose 시작 중...');
+  console.log(`[DaOnRoad] Docker Compose 시작 중... (${compose.cmd})`);
 
   // docker compose up -d (백그라운드 실행)
-  composeProc = spawn('docker', ['compose', 'up', '-d', '--build'], {
+  const composeArgs = [...compose.args, 'up', '-d', '--build'];
+  composeProc = spawn(compose.cmd, composeArgs, {
     cwd: projectRoot,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -214,12 +239,15 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   // docker compose stop (컨테이너 중지, 삭제는 안 함)
   const projectRoot = getProjectRoot();
+  const stopCompose = getComposeCmd();
   console.log('[DaOnRoad] 컨테이너 중지 중...');
-  spawnSync('docker', ['compose', 'stop'], {
-    cwd: projectRoot,
-    stdio: 'ignore',
-    timeout: 10000,
-  });
+  if (stopCompose) {
+    spawnSync(stopCompose.cmd, [...stopCompose.args, 'stop'], {
+      cwd: projectRoot,
+      stdio: 'ignore',
+      timeout: 10000,
+    });
+  }
   if (process.platform !== 'darwin') app.quit();
 });
 
