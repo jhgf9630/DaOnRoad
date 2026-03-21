@@ -19,8 +19,10 @@ else:
 # ── API 키 확인 로그 ─────────────────────────────────────────────
 _kakao = os.environ.get("KAKAO_API_KEY", "")
 _tmap  = os.environ.get("TMAP_API_KEY",  "")
+_osrm  = os.environ.get("OSRM_BASE_URL", "")
 print(f"[main] KAKAO_API_KEY: {'✅ 설정됨 (' + _kakao[:6] + '...)' if _kakao else '❌ 없음'}")
 print(f"[main] TMAP_API_KEY:  {'✅ 설정됨' if _tmap else '❌ 없음'}")
+print(f"[main] OSRM_BASE_URL: {'✅ 설정됨 (' + _osrm + ')' if _osrm else '❌ 없음 (직선 경로 사용)'}")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

@@ -1,17 +1,104 @@
-# 가상 환경 (Python)
+# ════════════════════════════════════════
+# DaOnRoad .gitignore
+# ════════════════════════════════════════
+
+# ── API 키 / 환경설정 (절대 커밋 금지) ──
+backend/.env
+*.env
+.env.local
+.env.production
+
+# ── Python ──────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+pip-log.txt
+
+# 가상환경
+backend/venv/
 venv/
 .venv/
 env/
+ENV/
 
-# 의존성 폴더 (Node.js)
-node_modules/
+# ── 캐시 파일 (자동 생성, 커밋 불필요) ──
+backend/cache/
+*.json.bak
 
-# 빌드 결과물 및 실행 파일
-dist/
-build/
-*.exe
-*.dll
+# ── Node.js / Electron ──────────────────
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
 
-# OS 설정 파일
+# ── OSRM 지도 데이터 (용량 매우 큼) ────
+osrm-data/
+*.osm.pbf
+*.osrm
+*.osrm.cells
+*.osrm.cnbg
+*.osrm.cnbg_to_ebg
+*.osrm.dbg
+*.osrm.ebg
+*.osrm.ebg_nodes
+*.osrm.edges
+*.osrm.enw
+*.osrm.fileIndex
+*.osrm.geometry
+*.osrm.icd
+*.osrm.maneuver_overrides
+*.osrm.mldgr
+*.osrm.names
+*.osrm.nbg_nodes
+*.osrm.partition
+*.osrm.properties
+*.osrm.ramIndex
+*.osrm.restrictions
+*.osrm.timestamp
+*.osrm.tld
+*.osrm.tls
+*.osrm.turn_duration_penalties
+*.osrm.turn_penalties_index
+*.osrm.turn_weight_penalties
+
+# ── Excel 업로드/결과 파일 ───────────────
+*.xlsx
+*.xls
+!backend/create_sample_excel.py
+
+# ── OS 파일 ─────────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ── IDE ──────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# ── 로그 ────────────────────────────────
+*.log
+logs/
+
+# ── 테스트 커버리지 ──────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
