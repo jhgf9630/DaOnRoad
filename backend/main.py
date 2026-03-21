@@ -4,14 +4,18 @@ DaOnRoad - FastAPI Backend
 import os
 from pathlib import Path
 
-# ── .env 로드 (모든 import보다 먼저) ────────────────────────────
+# ── .env 로드 ───────────────────────────────────────────────────
+# 우선순위: 시스템 환경변수(Docker) > .env 파일
+# Docker Compose 실행 시 environment 블록이 우선 적용됨
 _env_path = Path(__file__).parent / ".env"
 if _env_path.exists():
     for _line in _env_path.read_text(encoding="utf-8").splitlines():
         _line = _line.strip()
         if _line and not _line.startswith("#") and "=" in _line:
             _k, _v = _line.split("=", 1)
-            os.environ[_k.strip()] = _v.strip()   # setdefault → 직접 set
+            # 시스템 환경변수가 이미 있으면 덮어쓰지 않음 (Docker 우선)
+            if _k.strip() not in os.environ:
+                os.environ[_k.strip()] = _v.strip()
     print(f"[main] .env 로드 완료")
 else:
     print(f"[main] .env 없음 — 환경변수에서 API 키 사용")

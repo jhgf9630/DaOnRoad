@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# 가상환경 (Docker 이미지에 포함 불필요)
+venv/
+.venv/
+env/
+
+# 캐시 (컨테이너 볼륨으로 관리)
+cache/
+
+# 환경변수 (보안)
+.env
+
+# 개발 도구
+.pytest_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+
+# 임시 파일
+*.log
+*.tmp

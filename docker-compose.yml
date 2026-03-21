@@ -1,0 +1,56 @@
+# ── DaOnRoad — Docker Compose ────────────────────────────────────
+# 백엔드(FastAPI) + OSRM(경로 계산) 통합 실행
+#
+# 사용법:
+#   최초: docker compose up --build
+#   이후: docker compose up -d
+#   종료: docker compose down
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── FastAPI 백엔드 ─────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: daonroad-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # .env 파일 마운트 (API 키)
+      - ./backend/.env:/app/.env:ro
+      # 캐시 유지 (재시작 시 지오코딩 캐시 보존)
+      - daonroad-cache:/app/cache
+    environment:
+      - OSRM_BASE_URL=http://osrm:5000
+    depends_on:
+      osrm:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── OSRM 경로 계산 서버 ────────────────────────────────────────
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: daonroad-osrm
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./osrm-data:/data:ro
+    command: osrm-routed --algorithm mld /data/south-korea-latest.osrm
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  daonroad-cache:
