@@ -25,6 +25,11 @@ if not exist "frontend\package.json" (
 :: assets folder
 if not exist "frontend\assets" mkdir "frontend\assets"
 
+:: ★ Disable code signing completely (no certificate available)
+set CSC_IDENTITY_AUTO_DISCOVERY=false
+set CSC_LINK=
+set WIN_CSC_LINK=
+
 echo [1/3] Installing frontend dependencies...
 cd frontend
 call npm install
