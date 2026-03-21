@@ -72,17 +72,17 @@ function getComposeCmd() {
 // ─────────────────────────────────────────────────────────────────
 function startDockerCompose() {
   const projectRoot = getProjectRoot();
-  console.log(`[DaOnRoad] 프로젝트 루트: ${projectRoot}`);
+  console.log(`[DaOnRoad] Project root: ${projectRoot}`);
 
   if (!isDockerAvailable()) {
-    console.error('[DaOnRoad] Docker가 설치되지 않았거나 실행 중이 아닙니다.');
+    console.error('[DaOnRoad] Docker is not running.');
     showDockerError();
     return false;
   }
 
   const compose = getComposeCmd();
   if (!compose) {
-    console.error('[DaOnRoad] docker compose 명령어를 찾을 수 없습니다.');
+    console.error('[DaOnRoad] docker compose command not found.');
     showDockerError();
     return false;
   }
@@ -90,10 +90,10 @@ function startDockerCompose() {
   // .env 파일 존재 확인
   const envPath = path.join(projectRoot, 'backend', '.env');
   if (!fs.existsSync(envPath)) {
-    console.warn('[DaOnRoad] backend/.env 파일이 없습니다. .env.example을 복사하세요.');
+    console.warn('[DaOnRoad] backend/.env not found. Copy .env.example to .env');
   }
 
-  console.log(`[DaOnRoad] Docker Compose 시작 중... (${compose.cmd})`);
+  console.log(`[DaOnRoad] Starting Docker Compose... (${compose.cmd})`);
 
   // docker compose up -d (백그라운드 실행)
   const composeArgs = [...compose.args, 'up', '-d', '--build'];
@@ -107,14 +107,14 @@ function startDockerCompose() {
   composeProc.stderr.on('data', d => console.log(`[compose] ${d.toString().trim()}`));
 
   composeProc.on('exit', code => {
-    console.log(`[DaOnRoad] docker compose 완료 (코드: ${code})`);
+    console.log(`[DaOnRoad] docker compose done (code: ${code})`);
     if (code !== 0) {
       showComposeError(code);
     }
   });
 
   composeProc.on('error', err => {
-    console.error(`[DaOnRoad] docker compose 실행 오류: ${err.message}`);
+    console.error(`[DaOnRoad] docker compose error: ${err.message}`);
     showDockerError();
   });
 
@@ -124,7 +124,7 @@ function startDockerCompose() {
 // ─────────────────────────────────────────────────────────────────
 // 백엔드 준비 대기 (최대 60초)
 // ─────────────────────────────────────────────────────────────────
-async function waitForBackend(retries = 60, interval = 1000) {
+async function waitForBackend(retries = 120, interval = 1000) {
   const http = require('http');
   for (let i = 0; i < retries; i++) {
     const ok = await new Promise(resolve => {
@@ -135,11 +135,11 @@ async function waitForBackend(retries = 60, interval = 1000) {
       req.setTimeout(800, () => { req.destroy(); resolve(false); });
     });
     if (ok) {
-      console.log(`[DaOnRoad] 백엔드 준비 완료 (${i + 1}초)`);
+      console.log(`[DaOnRoad] Backend ready (${i + 1}s)`);
       return true;
     }
     if (i % 5 === 0 && i > 0) {
-      console.log(`[DaOnRoad] 백엔드 대기 중... (${i}/${retries}초)`);
+      console.log(`[DaOnRoad] Waiting for backend... (${i}/${retries}s)`);
     }
     await new Promise(r => setTimeout(r, interval));
   }
@@ -153,14 +153,14 @@ function showDockerError() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   dialog.showMessageBox(mainWindow, {
     type: 'error',
-    title: 'Docker 오류',
-    message: 'Docker가 실행되지 않았습니다.',
+    title: 'Docker Error',
+    message: 'Docker Desktop is not running.',
     detail: [
-      '1. Docker Desktop을 실행하세요.',
-      '2. 트레이 아이콘이 초록색이 될 때까지 기다리세요.',
-      '3. 앱을 다시 시작하세요.',
+      '1. Start Docker Desktop.',
+      '2. Wait until the tray icon turns green.',
+      '3. Restart DaOnRoad app.',
     ].join('\n'),
-    buttons: ['Docker Desktop 열기', '닫기'],
+    buttons: ['Open Docker Desktop', 'Close'],
   }).then(({ response }) => {
     if (response === 0) shell.openExternal('https://www.docker.com/get-started');
   });
@@ -171,16 +171,16 @@ function showComposeError(code) {
   const projectRoot = getProjectRoot();
   dialog.showMessageBox(mainWindow, {
     type: 'warning',
-    title: '백엔드 시작 오류',
-    message: `Docker Compose 실행 실패 (코드: ${code})`,
+    title: 'Backend Start Error',
+    message: `Docker Compose failed (code: ${code})`,
     detail: [
-      '터미널에서 직접 실행해보세요:',
+      'Run manually to see details:',
       `  cd ${projectRoot}`,
       '  docker compose up --build',
       '',
-      '오류 내용은 터미널 로그를 확인하세요.',
+      'Check terminal: docker compose logs -f',
     ].join('\n'),
-    buttons: ['확인'],
+    buttons: ['OK'],
   });
 }
 
@@ -227,7 +227,7 @@ app.whenReady().then(async () => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       const js = ok
         ? `updateApiStatus(true)`
-        : `updateApiStatus(false, '백엔드 시작 시간 초과\\ndocker compose up 상태를 확인하세요.')`;
+        : `updateApiStatus(false, 'Backend timeout. Run: docker compose logs -f backend')`;
       mainWindow.webContents.executeJavaScript(js).catch(() => {});
     });
   }
@@ -240,7 +240,7 @@ app.on('window-all-closed', () => {
   // docker compose stop (컨테이너 중지, 삭제는 안 함)
   const projectRoot = getProjectRoot();
   const stopCompose = getComposeCmd();
-  console.log('[DaOnRoad] 컨테이너 중지 중...');
+  console.log('[DaOnRoad] Stopping containers...');
   if (stopCompose) {
     spawnSync(stopCompose.cmd, [...stopCompose.args, 'stop'], {
       cwd: projectRoot,
