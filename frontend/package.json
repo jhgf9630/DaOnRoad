@@ -48,14 +48,13 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
+          "target": "portable",
           "arch": [
             "x64"
           ]
         }
       ],
-      "icon": "assets/DaOnRoad.ico",
-      "forceCodeSigning": false
+      "icon": "assets/DaOnRoad.ico"
     },
     "mac": {
       "target": [
@@ -68,16 +67,6 @@
         }
       ],
       "icon": "assets/DaOnRoad.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "assets/DaOnRoad.ico",
-      "uninstallerIcon": "assets/DaOnRoad.ico",
-      "shortcutName": "DaOnRoad",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "unicode": true
     },
     "compression": "normal"
   },
