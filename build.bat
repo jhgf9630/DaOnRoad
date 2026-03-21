@@ -6,7 +6,7 @@ echo  DaOnRoad - Build Script
 echo  ========================
 echo.
 
-:: Node.js 확인
+:: Node.js check
 node --version > nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js not found. Install from https://nodejs.org/
@@ -14,7 +14,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: 루트 위치 확인
+:: Must run from project root
 if not exist "frontend\package.json" (
     echo [ERROR] Run this script from the DaOnRoad root folder.
     echo  Current: %cd%
@@ -22,12 +22,8 @@ if not exist "frontend\package.json" (
     exit /b 1
 )
 
-:: assets 폴더 및 아이콘 확인
+:: assets folder
 if not exist "frontend\assets" mkdir "frontend\assets"
-if not exist "frontend\assets\DaOnRoad.ico" (
-    echo [WARN] frontend\assets\DaOnRoad.ico not found - building without icon.
-    echo.
-)
 
 echo [1/3] Installing frontend dependencies...
 cd frontend
@@ -41,7 +37,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [2/3] Building Electron package...
-call npm run build:win
+call npm run buildwin
 if %errorlevel% neq 0 (
     echo [ERROR] Build failed. See log above.
     cd ..
