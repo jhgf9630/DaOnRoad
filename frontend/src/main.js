@@ -27,13 +27,17 @@ let composeProc   = null;
 // 구조: DaOnRoad/frontend/src/main.js → DaOnRoad/
 // ─────────────────────────────────────────────────────────────────
 function getProjectRoot() {
-  // 개발: frontend/src/main.js → ../../
+  // 개발 환경: DaOnRoad/frontend/src/main.js → DaOnRoad/
   const devRoot = path.resolve(__dirname, '..', '..');
   if (fs.existsSync(path.join(devRoot, 'docker-compose.yml'))) return devRoot;
 
-  // 패키징된 경우: app.asar 밖의 extraResources
-  const resRoot = path.resolve(process.resourcesPath || __dirname, '..');
-  if (fs.existsSync(path.join(resRoot, 'docker-compose.yml'))) return resRoot;
+  // 패키징된 환경:
+  // process.resourcesPath = .../DaOnRoad/resources/
+  // extraResources → resources/docker-compose.yml, resources/backend/
+  if (process.resourcesPath) {
+    const resRoot = process.resourcesPath;
+    if (fs.existsSync(path.join(resRoot, 'docker-compose.yml'))) return resRoot;
+  }
 
   return devRoot;
 }
