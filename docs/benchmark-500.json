@@ -1,0 +1,14 @@
+{
+  "code": "no_feasible_solution",
+  "message": "제한 시간 안에 모든 학생을 정원·탑승시간 조건에 맞춰 배정하지 못했습니다. 탐색 시간을 늘리거나 차량·시간 제한을 조정해주세요. 불가능함이 증명된 것은 아닙니다.",
+  "solver_statuses": [
+    3,
+    3
+  ],
+  "reference_attempt": null,
+  "scenario": "synthetic asymmetric metro; not real OSRM",
+  "requested_students": 500,
+  "boarding_sec": 120,
+  "spread": 1.0,
+  "wall_seconds": 11.61
+}

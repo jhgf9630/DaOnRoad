@@ -62,9 +62,15 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [2/3] Waiting for backend to be ready...
+set WAIT_COUNT=0
 :wait_loop
 timeout /t 2 /nobreak > nul
-curl -s http://127.0.0.1:8000/health > nul 2>&1
+set /a WAIT_COUNT+=1
+if %WAIT_COUNT% geq 90 (
+    echo [ERROR] Backend timeout. Run docker compose logs backend
+    exit /b 1
+)
+curl -fsS http://127.0.0.1:8000/health > nul 2>&1
 if %errorlevel% neq 0 goto wait_loop
 
 echo.

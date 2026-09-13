@@ -16,6 +16,10 @@ HEADER_FILL = PatternFill(start_color="1F3864", end_color="1F3864", fill_type="s
 HEADER_FONT = Font(color="FFFFFF", bold=True, size=11)
 ALT_FILL    = PatternFill(start_color="EEF3FF", end_color="EEF3FF", fill_type="solid")
 
+def _time_label(value, offset=0):
+    return (f'전{-offset}일 ' if offset < 0 else '') + value
+
+
 def _border():
     s = Side(style='thin', color="BBBBBB")
     return Border(left=s, right=s, top=s, bottom=s)
@@ -35,6 +39,14 @@ class ExcelExporter:
         self._summary_sheet(wb, routes, destination, summary)
         self._route_sheet(wb, routes, destination)
         self._passenger_sheet(wb, routes)
+        # Treat all externally supplied strings as text, including leading '='.
+        # Avoid interpreting student names/addresses as spreadsheet formulas.
+        for sheet in wb:
+            sheet.freeze_panes = 'A2' if sheet.title != 'Bus Summary' else 'A6'
+            for row in sheet:
+                for cell in row:
+                    if isinstance(cell.value, str):
+                        cell.data_type = 's'
         buf = io.BytesIO()
         wb.save(buf)
         return buf.getvalue()
@@ -45,19 +57,19 @@ class ExcelExporter:
         ws.title = "Bus Summary"
         ws.row_dimensions[1].height = 28
 
-        ws.merge_cells("A1:G1")
+        ws.merge_cells("A1:I1")
         ws["A1"] = "🚌  DaOnRoad — 버스 노선 최적화 결과"
         ws["A1"].font = Font(size=15, bold=True, color="1F3864")
         ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
 
-        ws.merge_cells("A2:G2")
+        ws.merge_cells("A2:I2")
         ws["A2"] = (f"도착지: {destination.get('address','')}   "
                     f"|   도착 목표: {destination.get('arrival_time','')}")
         ws["A2"].font = Font(size=10, italic=True, color="595959")
         _hcenter(ws["A2"])
 
         if summary:
-            ws.merge_cells("A3:G3")
+            ws.merge_cells("A3:I3")
             ws["A3"] = (f"총 승객 {summary.get('total_passengers',0)}명  |  "
                         f"버스 {summary.get('total_buses',0)}대")
             ws["A3"].font = Font(size=10, color="595959")
@@ -65,7 +77,7 @@ class ExcelExporter:
 
         ws.append([])
 
-        hdrs = ["버스ID","출발지","도착지","출발시간","도착시간","소요(분)","탑승인원"]
+        hdrs = ["버스ID","출발지","도착지","출발시간","도착시간","소요(분)","탑승인원","첫 탑승","최장 탑승(분)"]
         ws.append(hdrs)
         hr = ws.max_row
         for c in range(1, len(hdrs)+1):
@@ -79,10 +91,12 @@ class ExcelExporter:
                 route.get('bus_id',''),
                 v.get('start_location',''),
                 destination.get('address',''),
-                route.get('departure_time',''),
+                _time_label(route.get('departure_time',''), route.get('departure_day_offset',0)),
                 route.get('arrival_time',''),
                 route.get('total_duration_min', 0),
                 route.get('total_passengers', 0),
+                route.get('first_pickup_time',''),
+                route.get('max_ride_min',0),
             ]
             ws.append(row)
             dr = ws.max_row
@@ -96,7 +110,7 @@ class ExcelExporter:
                 elif i % 2 == 1:
                     cell.fill = ALT_FILL
 
-        _set_col_widths(ws, [12,22,28,12,12,10,12])
+        _set_col_widths(ws, [12,22,28,16,12,10,12,12,16])
 
     # ── Sheet 2: Route Detail ────────────────────────────────
     def _route_sheet(self, wb, routes, destination):
@@ -126,7 +140,7 @@ class ExcelExporter:
                         pickup_seq,
                         stop.get('name',''),
                         stop.get('address',''),
-                        stop.get('pickup_time',''),
+                        _time_label(stop.get('pickup_time',''), stop.get('day_offset',0)),
                         stop.get('passenger_count', 0),
                         "탑승",
                     ]
@@ -177,7 +191,7 @@ class ExcelExporter:
                     stop.get('name',''),
                     route.get('bus_id',''),
                     stop.get('address',''),
-                    stop.get('pickup_time',''),
+                    _time_label(stop.get('pickup_time',''), stop.get('day_offset',0)),
                     stop.get('passenger_count', 1),
                 ]
                 ws.append(row)

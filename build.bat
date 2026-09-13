@@ -21,14 +21,6 @@ if not exist "frontend\package.json" (
     exit /b 1
 )
 
-:: .env check
-if not exist "backend\.env" (
-    echo [ERROR] backend\.env not found.
-    echo  Create backend\.env and add KAKAO_API_KEY before building.
-    pause
-    exit /b 1
-)
-
 :: osrm-data check
 if not exist "osrm-data\south-korea-latest.osrm" (
     echo [ERROR] osrm-data\south-korea-latest.osrm not found.
@@ -66,7 +58,7 @@ if %errorlevel% neq 0 (
 cd ..
 
 echo.
-echo [3/4] Adding osrm-data and .env to package...
+echo [3/4] Adding osrm-data to package...
 
 :: osrm-data 복사
 if exist "dist\win-unpacked\resources\osrm-data" rmdir /s /q "dist\win-unpacked\resources\osrm-data"
@@ -77,13 +69,8 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: .env 복사
-copy /y "backend\.env" "dist\win-unpacked\resources\backend\.env" > nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to copy .env.
-    pause
-    exit /b 1
-)
+:: API keys are configured by each installation; never distribute developer keys.
+copy /y "backend\.env.example" "dist\win-unpacked\resources\backend\.env" > nul
 
 echo.
 echo [4/4] Creating DaOnRoad.zip...

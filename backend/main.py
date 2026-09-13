@@ -24,25 +24,40 @@ else:
 _kakao = os.environ.get("KAKAO_API_KEY", "")
 _tmap  = os.environ.get("TMAP_API_KEY",  "")
 _osrm  = os.environ.get("OSRM_BASE_URL", "")
-print(f"[main] KAKAO_API_KEY: {'✅ 설정됨 (' + _kakao[:6] + '...)' if _kakao else '❌ 없음'}")
+print(f"[main] KAKAO_API_KEY: {'설정됨' if _kakao else '없음'}")
 print(f"[main] TMAP_API_KEY:  {'✅ 설정됨' if _tmap else '❌ 없음'}")
 print(f"[main] OSRM_BASE_URL: {'✅ 설정됨 (' + _osrm + ')' if _osrm else '❌ 없음 (직선 경로 사용)'}")
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.upload import router as upload_router
 from api.routing import router as routing_router
 from api.export import router as export_router
+from api.jobs import router as jobs_router
 
 app = FastAPI(title="DaOnRoad API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["null", "http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(jobs_router, prefix="/api", tags=["jobs"])
+
+@app.middleware("http")
+async def local_client_only(request: Request, call_next):
+    origin = request.headers.get("origin")
+    if origin and origin not in ("null", "http://127.0.0.1:8000", "http://localhost:8000"):
+        return JSONResponse(status_code=403, content={"detail": "허용되지 않은 출처입니다."})
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        if request.headers.get("X-DaOnRoad-Client") != "desktop-v1":
+            return JSONResponse(status_code=403, content={"detail": "DaOnRoad 앱에서 요청해주세요."})
+    return await call_next(request)
+
 
 app.include_router(upload_router, prefix="/api", tags=["upload"])
 app.include_router(routing_router, prefix="/api", tags=["routing"])
@@ -61,11 +76,20 @@ async def health():
     return {
         "status": "ok",
         "service": "DaOnRoad",
+        "api_version": 2,
+        "routing_jobs": True,
         "kakao_key": kakao,
         "tmap_key": tmap
     }
 
 
+@app.get("/ready")
+def ready():
+    from routing.osrm_service import check_osrm_health
+    state = check_osrm_health()
+    return JSONResponse(status_code=200 if state['status'] == 'ok' else 503, content={'osrm': state['status']})
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("main:app", host=os.environ.get("DAONROAD_BIND_HOST", "127.0.0.1"), port=8000, reload=False)

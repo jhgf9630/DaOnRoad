@@ -28,7 +28,7 @@ def haversine_seconds(lat1: float, lng1: float, lat2: float, lng2: float) -> int
     hours = road_km / AVG_SPEED_KMH
     seconds = int(hours * 3600)
     # 최소 60초 (정차/탑승 시간)
-    return max(seconds, 60)
+    return max(seconds, 0)
 
 
 def build_haversine_matrix(locations: list) -> list:

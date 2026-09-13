@@ -19,7 +19,7 @@ class ExportRequest(BaseModel):
 
 
 @router.post("/export")
-async def export_excel(request: ExportRequest):
+def export_excel(request: ExportRequest):
     """
     노선 결과를 Excel 파일로 Export
     """

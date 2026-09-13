@@ -95,3 +95,8 @@ logs/
 
 # ── Docker 관련 ──────────────────────────────────────────
 .docker/
+
+frontend/vendor/
+.pytest_cache/
+
+dist-validation/

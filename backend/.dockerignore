@@ -26,3 +26,8 @@ htmlcov/
 # 임시 파일
 *.log
 *.tmp
+
+*.osm.pbf
+*.xlsx
+*.xls
+tests/

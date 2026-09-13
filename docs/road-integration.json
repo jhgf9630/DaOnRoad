@@ -1,0 +1,19 @@
+{
+  "source": "osrm",
+  "summary": {
+    "total_passengers": 12,
+    "input_passengers": 12,
+    "total_buses": 1,
+    "available_buses": 2,
+    "unassigned_passengers": 0,
+    "total_duration_min": 44.4,
+    "max_ride_min": 41.4,
+    "average_ride_min": 22.0
+  },
+  "warnings": [],
+  "excel_sheets": [
+    "Bus Summary",
+    "Route Detail",
+    "Passenger"
+  ]
+}

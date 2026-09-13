@@ -32,7 +32,10 @@ docker compose up -d --build
 
 echo ""
 echo "[2/3] 백엔드 준비 대기 중..."
-until curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; do
+attempt=0
+until curl -fsS http://127.0.0.1:8000/health > /dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 90 ]; then echo "Backend timeout: docker compose logs backend"; exit 1; fi
     sleep 2
     printf "."
 done

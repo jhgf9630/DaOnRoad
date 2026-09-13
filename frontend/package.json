@@ -8,11 +8,19 @@
     "dev": "electron . --dev",
     "build": "electron-builder --win",
     "buildwin": "electron-builder --win",
-    "buildmac": "electron-builder --mac"
+    "buildmac": "electron-builder --mac",
+    "vendor": "node scripts/vendor.js",
+    "prestart": "npm run vendor",
+    "predev": "npm run vendor",
+    "prebuild": "npm run vendor",
+    "prebuildwin": "npm run vendor",
+    "prebuildmac": "npm run vendor",
+    "test": "node --test tests/*.test.cjs"
   },
   "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-builder": "^24.0.0"
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3",
+    "jsdom": "26.1.0"
   },
   "build": {
     "appId": "com.daonroad.app",
@@ -25,7 +33,8 @@
     "files": [
       "src/**/*",
       "index.html",
-      "assets/**/*"
+      "assets/**/*",
+      "vendor/**/*"
     ],
     "extraResources": [
       {
@@ -42,9 +51,9 @@
           "!cache/**",
           "!*.pyc",
           "!.env",
-          "!.env.example",
-          "!Dockerfile",
-          "!.dockerignore"
+          "!*.osm.pbf",
+          "!*.xlsx",
+          "!tests/**"
         ]
       }
     ],
@@ -73,5 +82,9 @@
     },
     "compression": "normal"
   },
-  "author": "DaOnRoad"
+  "author": "DaOnRoad",
+  "dependencies": {
+    "leaflet": "1.9.4",
+    "leaflet.markercluster": "1.5.3"
+  }
 }

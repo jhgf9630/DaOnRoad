@@ -2,11 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src http://127.0.0.1:8000; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DaOnRoad</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css"/>
+<link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css"/>
+<link rel="stylesheet" href="vendor/markercluster/MarkerCluster.Default.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#0f0f1a;color:#e0e0e0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
@@ -166,9 +167,8 @@ input::placeholder{color:#445566}
   <div class="panel" id="offWrap" style="display:none;padding:10px 14px">
     <div class="off-banner">
       ⚠️ <b>백엔드 서버에 연결할 수 없습니다.</b><br>
-      Electron 앱이 자동으로 시작하지 못했다면<br>
-      터미널에서 직접 실행해 주세요:<br>
-      <code>cd backend &amp;&amp; python main.py</code>
+      기존 DaOnRoad 앱을 모두 종료한 뒤<br>
+      Docker Desktop 실행을 확인하고 앱을 다시 열어주세요.
     </div>
   </div>
 
@@ -213,6 +213,19 @@ input::placeholder{color:#445566}
       <label>⏰ 도착 목표시간</label>
       <input type="time" id="arrivalTime" value="10:00" style="width:140px">
     </div>
+    <div class="fg"><label>운행일</label><input type="date" id="serviceDate"></div>
+    <details style="font-size:11px;margin-top:8px"><summary>배차 조건 · 균형형</summary>
+      <div class="fg"><label>최대 학생 탑승시간(분, 탑승 대기 포함)</label><input type="number" id="maxRide" value="90" min="1" max="240"></div>
+      <div class="fg"><label>차량 최대 운행시간(분, 출발지부터)</label><input type="number" id="maxRoute" value="240" min="1" max="720"></div>
+      <div class="fg"><label>한 행당 탑승 대기(초)</label><input type="number" id="boarding" value="120" min="0" max="600"></div>
+      <div class="fg"><label>학생 탑승시간 가중치</label><input type="number" id="rideWeight" value="0.2" min="0" max="10" step="0.01"></div>
+      <div class="fg"><label>차량 추가 비용(운행시간 환산 분)</label><input type="number" id="fixedCost" value="30" min="0" max="1440"></div>
+      <div class="fg"><label>이동시간 여유 배수(실시간 교통 아님)</label><input type="number" id="travelFactor" value="1" min="1" max="3" step="0.1"></div>
+      <div class="fg"><label>탐색 시간(초)</label><input type="number" id="searchSeconds" value="60" min="1" max="180"></div>
+      <label><input type="checkbox" id="allVehicles"> 등록 차량 모두 운행</label>
+      <label><input type="checkbox" id="allowEstimated"> 도로 서버 실패 시 직선 추정 허용</label>
+      <p style="line-height:1.6">비용은 금액이 아닌 비교 지표입니다. 한 행의 그룹은 분할하지 않습니다. 기본 대기는 행당 2분이며 실제 탑승 방식에 맞게 조정하세요.</p>
+    </details>
     <div style="margin-top:10px">
       <button class="btn btn-primary" id="genBtn" onclick="generateRoutes()">🚀 최적 노선 생성</button>
     </div>
@@ -231,7 +244,7 @@ input::placeholder{color:#445566}
   <!-- 결과 요약 -->
   <div class="panel" id="resultPanel" style="display:none">
     <div class="ptitle">📋 결과 요약</div>
-    <div class="sum-grid" id="sumGrid"></div>
+    <div class="sum-grid" id="sumGrid"></div><div id="resultNotes" style="white-space:pre-line;font-size:11px;line-height:1.7;margin-top:8px;color:#aabbcc"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px">
       <button class="btn btn-success" onclick="exportExcel()">📥 Excel 저장</button>
       <button class="btn btn-outline"  onclick="resetAll()">🔄 초기화</button>
@@ -258,12 +271,12 @@ input::placeholder{color:#445566}
   <div class="lbox">
     <div class="spinner"></div>
     <div style="font-size:14px" id="lovText">처리 중...</div>
-    <div style="font-size:11px;color:#445566;margin-top:4px" id="lovSub"></div>
+    <div style="font-size:11px;color:#8899aa;margin-top:4px" id="lovSub"></div><button class="btn btn-outline" id="cancelJob" onclick="cancelRouteJob()" style="display:none;margin-top:12px">계산 취소</button>
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/markercluster/leaflet.markercluster.js"></script>
 <script>
 // ═══════════════════════════════════════════════
 // 상수
@@ -278,21 +291,31 @@ const STEPS  = ['주소 좌표 확인','Distance Matrix 생성','VRP Solver 실�
 // ═══════════════════════════════════════════════
 // Electron IPC
 // ═══════════════════════════════════════════════
-let ipc=null;
-try{ipc=require('electron').ipcRenderer;}catch{
-  ipc={invoke:async(ch,d)=>{
-    if(ch!=='save-file')return null;
-    const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([new Uint8Array(d.data)])),download:d.defaultName});
-    a.click();return{success:true,path:d.defaultName};
-  }};
-}
+const ipc={invoke:async(ch,d)=>{
+  if(ch!=='save-file')throw new Error('허용되지 않은 작업');
+  if(window.daonroad)return window.daonroad.saveFile(d.defaultName,d.data);
+  const url=URL.createObjectURL(new Blob([new Uint8Array(d.data)]));
+  const a=Object.assign(document.createElement('a'),{href:url,download:d.defaultName});
+  a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  return {success:true,path:d.defaultName};
+}};
+const nativeFetch=window.fetch.bind(window);
+window.fetch=(url,options={})=>{
+  const headers=new Headers(options.headers||{});
+  if(String(url).startsWith(API))headers.set('X-DaOnRoad-Client','desktop-v1');
+  return nativeFetch(url,{...options,headers});
+};
+function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function domId(value){return Array.from(new TextEncoder().encode(value),n=>n.toString(16).padStart(2,'0')).join('');}
+function errorText(d){const x=d.detail||d.error||d;const message=typeof x==='string'?x:(x.message||(Array.isArray(x)?x.map(e=>e.msg).join(' / '):'요청 처리 실패'));return message+(x.reference_attempt?` 참고 후보의 최장 탑승은 ${x.reference_attempt.max_ride_min}분이며 운행 가능한 확정 결과가 아닙니다.`:'');}
+function displayTime(time,offset=0){return (offset<0?`전${-offset}일 `:'')+time;}
 
 // ═══════════════════════════════════════════════
 // 앱 상태
 // ═══════════════════════════════════════════════
 const S={
   passengers:[],vehicles:[],routes:null,destination:null,summary:null,
-  online:false,editingId:null,
+  online:false,editingId:null,jobId:null,failedRows:0,
   // AddressSearch 인스턴스 레지스트리
   addrSearches:{}
 };
@@ -330,6 +353,7 @@ class AddressSearch {
   constructor(containerId, options={}) {
     this.id        = containerId;
     this.options   = options;   // {placeholder, onSelect, onClear}
+    S.addrSearches[containerId]?.destroy();
     this.selected  = null;      // {lat, lng, address, name}
     this.debounce  = null;
     this._render();
@@ -355,14 +379,20 @@ class AddressSearch {
         <div class="coord-badge" id="cb_${this.id}"></div>
       </div>`;
     // 외부 클릭 시 드롭다운 닫기
-    document.addEventListener('click', e=>{
+    this._outsideClick = e=>{
       const wrap=document.getElementById(`aw_${this.id}`);
       if(wrap && !wrap.contains(e.target)) this._closeDropdown();
-    });
+    };
+    document.addEventListener('click',this._outsideClick);
   }
+
+  destroy(){clearTimeout(this.debounce);this._requestVersion=(this._requestVersion||0)+1;document.removeEventListener('click',this._outsideClick);}
 
   _onInput(val) {
     clearTimeout(this.debounce);
+    this._requestVersion=(this._requestVersion||0)+1;
+    this._clearSelected();
+    invalidateResults();
     if (!val.trim()) { this._closeDropdown(); this._clearSelected(); return; }
     this.debounce = setTimeout(()=>this._doSearch(), 400);
   }
@@ -378,6 +408,7 @@ class AddressSearch {
   }
 
   async _doSearch() {
+    const version=this._requestVersion=(this._requestVersion||0)+1;
     const input=document.getElementById(`ai_${this.id}`);
     const query=input?.value?.trim();
     if(!query){return;}
@@ -393,9 +424,10 @@ class AddressSearch {
     try{
       const r=await fetch(`${API}/search-address`,{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({query,limit:6}),signal:AbortSignal.timeout(8000)
+        body:JSON.stringify({query,limit:6}),signal:AbortSignal.timeout(30000)
       });
       const d=await r.json();
+      if(version!==this._requestVersion)return;
       console.log('[검색]', query, '->', d);
       if(!r.ok){
         const msg=d.detail||'검색 실패';
@@ -403,7 +435,7 @@ class AddressSearch {
         if(r.status===503){
           dd.innerHTML=`<div class="search-no-result">⚠️ API 키 미설정<br><small style="color:#cc8888">backend/.env에 KAKAO_API_KEY를 추가하고<br>백엔드를 재시작하세요</small></div>`;
         } else {
-          dd.innerHTML=`<div class="search-no-result">⚠️ ${msg}</div>`;
+          dd.innerHTML=`<div class="search-no-result">⚠️ ${esc(msg)}</div>`;
         }
         return;
       }
@@ -417,8 +449,9 @@ class AddressSearch {
       }
       this._renderResults(d.results||[]);
     }catch(e){
+      if(version!==this._requestVersion)return;
       console.error('[검색 오류]', e);
-      dd.innerHTML=`<div class="search-no-result">검색 실패: ${e.message}<br><small style="color:#445566">백엔드 터미널에서 오류를 확인하세요.</small></div>`;
+      dd.innerHTML=`<div class="search-no-result">검색 실패: ${esc(e.message)}<br><small style="color:#445566">백엔드 터미널에서 오류를 확인하세요.</small></div>`;
     }
   }
 
@@ -435,9 +468,9 @@ class AddressSearch {
     }
     dd.innerHTML=results.map((r,i)=>`
       <div class="search-item" onclick="S.addrSearches['${this.id}']._selectItem(${i})" data-idx="${i}">
-        <div class="search-item-name">${r.name||r.address}</div>
-        ${r.name&&r.address&&r.name!==r.address?`<div class="search-item-addr">${r.address}</div>`:''}
-        ${r.category?`<div class="search-item-cat">${r.category}</div>`:''}
+        <div class="search-item-name">${esc(r.name||r.address)}</div>
+        ${r.name&&r.address&&r.name!==r.address?`<div class="search-item-addr">${esc(r.address)}</div>`:''}
+        ${r.category?`<div class="search-item-cat">${esc(r.category)}</div>`:''}
       </div>`).join('');
     dd._results=results;
   }
@@ -448,6 +481,7 @@ class AddressSearch {
     const item=results[idx];
     if(!item)return;
     this.selected=item;
+    invalidateResults();
     const input=document.getElementById(`ai_${this.id}`);
     input.value=item.name&&item.name!==item.address
       ?`${item.name} (${item.address})`
@@ -502,6 +536,8 @@ class AddressSearch {
   }
 
   clear(){
+    clearTimeout(this.debounce);
+    this._requestVersion=(this._requestVersion||0)+1;
     this.selected=null;
     const input=document.getElementById(`ai_${this.id}`);
     if(input) input.value='';
@@ -524,7 +560,7 @@ function updateApiStatus(online,msg){
 async function checkApi(){
   document.getElementById('apiDot').className='api-dot ing';
   document.getElementById('apiLbl').textContent='확인 중...';
-  try{const r=await fetch(HLTH,{signal:AbortSignal.timeout(3000)});updateApiStatus(r.ok);}
+  try{const r=await fetch(HLTH,{signal:AbortSignal.timeout(3000)});const data=await r.json();updateApiStatus(r.ok&&data.routing_jobs===true,data.routing_jobs===true?'':'이전 백엔드 실행 중: 기존 앱 종료 후 다시 실행');}
   catch{updateApiStatus(false,'백엔드 미실행');}
 }
 setTimeout(checkApi,6000);setInterval(checkApi,30000);
@@ -545,14 +581,16 @@ async function uploadFile(file){
   showLov('Excel 파싱 중...',file.name);
   try{
     const form=new FormData();form.append('file',file);
-    const r=await fetch(`${API}/upload`,{method:'POST',body:form,signal:AbortSignal.timeout(30000)});
+    const r=await fetch(`${API}/upload`,{method:'POST',body:form,signal:AbortSignal.timeout(900000)});
     const d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'업로드 실패');
+    if(!r.ok)throw new Error(errorText(d)||'업로드 실패');
+    invalidateResults();
+    S.failedRows=d.failed;
     S.passengers=d.passengers.filter(p=>p.geocoded);
     renderPaxPreview(d,file.name);
     renderPaxMarkers();
     toast(`${d.success}명 로드 완료${d.failed>0?`\n좌표 실패 ${d.failed}건`:''}`, 'success');
-  }catch(e){toast(e.message.includes('fetch')?'서버 연결 실패':`업로드 오류: ${e.message}`,'error');}
+  }catch(e){toast(e.message.includes('fetch')?'서버 연결 실패':`업로드 오류: ${esc(e.message)}`,'error');}
   finally{hideLov();}
 }
 
@@ -565,8 +603,8 @@ function renderPaxPreview(d,fname){
         <thead><tr><th>이름</th><th>탑승지</th><th>인원</th><th>좌표</th></tr></thead>
         <tbody>${d.passengers.map(p=>`
           <tr>
-            <td>${p.name}</td>
-            <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left" title="${p.address}">${p.address}</td>
+            <td>${esc(p.name)}</td>
+            <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left" title="${esc(p.address)}">${esc(p.address)}</td>
             <td>${p.passenger_count}</td>
             <td class="${p.geocoded?'ok':'fail'}">${p.geocoded?'✓':'✗'}</td>
           </tr>`).join('')}</tbody>
@@ -582,7 +620,7 @@ function renderPaxMarkers(){
   const bounds=[];
   S.passengers.forEach(p=>{
     const m=L.circleMarker([p.lat,p.lng],{radius:7,color:'#7eb3ff',fillColor:'#3355ee',fillOpacity:.85,weight:2})
-      .bindPopup(`<div><div class="pop-name">👤 ${p.name}</div><div class="pop-row">${p.address}</div><div class="pop-row">인원: <b style="color:#ffbb44">${p.passenger_count}명</b></div></div>`);
+      .bindPopup(`<div><div class="pop-name">👤 ${esc(p.name)}</div><div class="pop-row">${esc(p.address)}</div><div class="pop-row">인원: <b style="color:#ffbb44">${p.passenger_count}명</b></div></div>`);
     layerPax.addLayer(m);bounds.push([p.lat,p.lng]);
   });
   if(bounds.length)map.fitBounds(bounds,{padding:[50,50]});
@@ -596,6 +634,7 @@ function renderPaxMarkers(){
 function initAddFormAddr(){
   new AddressSearch('addFormAddrWrap',{
     placeholder:'출발지 주소 또는 장소명',
+    onClear:()=>layerPreview.clearLayers(),
     onSelect: item=>{
       // ★ previewLayer에 임시 마커 표시 (layerVehicle과 분리)
       layerPreview.clearLayers();
@@ -606,8 +645,8 @@ function initAddFormAddr(){
       const m=L.marker([item.lat,item.lng],{icon})
         .bindPopup(`<div>
           <div class="pop-name" style="color:#ffaa33">🚌 출발지 미리보기</div>
-          <div class="pop-row">${item.name||item.address}</div>
-          <div class="pop-row" style="color:#8899bb;font-size:10px">${item.address}</div>
+          <div class="pop-row">${esc(item.name||item.address)}</div>
+          <div class="pop-row" style="color:#8899bb;font-size:10px">${esc(item.address)}</div>
           <div class="pop-row" style="color:#445566;font-size:10px">lat:${item.lat.toFixed(5)} lng:${item.lng.toFixed(5)}</div>
         </div>`);
       layerPreview.addLayer(m);
@@ -628,7 +667,7 @@ function previewOnMap(item, type){
     iconSize:[30,30],iconAnchor:[15,15]
   });
   const m=L.marker([item.lat,item.lng],{icon})
-    .bindPopup(`<div><div class="pop-name" style="color:#ffaa33">🚌 출발지 미리보기</div><div class="pop-row">${item.name||item.address}</div><div class="pop-row">${item.address}</div></div>`);
+    .bindPopup(`<div><div class="pop-name" style="color:#ffaa33">🚌 출발지 미리보기</div><div class="pop-row">${esc(item.name||item.address)}</div><div class="pop-row">${esc(item.address)}</div></div>`);
   layerVehicle.addLayer(m);
   m.openPopup();
   map.setView([item.lat,item.lng],14);
@@ -645,6 +684,8 @@ async function addVehicle(){
   if(S.vehicles.find(v=>v.bus_id===busId)){toast('이미 존재하는 버스 ID','warn');return;}
   if(!sel){toast('출발지를 검색하여 선택해주세요.','warn');return;}
 
+  if(!Number.isInteger(cap)||cap<1||cap>200){toast('정원은 1~200명입니다.','warn');return;}
+  invalidateResults();
   S.vehicles.push({
     bus_id:busId,capacity:cap,
     start_location:sel.address||(sel.name||''),
@@ -662,10 +703,11 @@ async function addVehicle(){
 }
 
 function removeVehicle(busId){
+  invalidateResults();
   S.vehicles=S.vehicles.filter(v=>v.bus_id!==busId);
   if(S.editingId===busId)S.editingId=null;
   // 편집 중 폼 제거
-  const editEl=document.getElementById(`ef_${busId}`);
+  const editEl=document.getElementById(`ef_${domId(busId)}`);
   if(editEl)editEl.remove();
   renderVList();renderVehicleMarkers();
 }
@@ -677,7 +719,7 @@ function startEdit(busId){
   if(S.editingId===busId){
     const v=S.vehicles.find(v=>v.bus_id===busId);
     if(!v)return;
-    const editSearchId=`ef_addr_${busId}`;
+    const editSearchId=`ef_addr_${domId(busId)}`;
     // 약간의 딜레이로 DOM 생성 후 초기화
     setTimeout(()=>{
       const as=new AddressSearch(editSearchId,{
@@ -692,8 +734,8 @@ function startEdit(busId){
           });
           const m=L.marker([item.lat,item.lng],{icon})
             .bindPopup(`<div>
-              <div class="pop-name" style="color:${vColor}">🚌 ${v.bus_id} 새 출발지</div>
-              <div class="pop-row">${item.address}</div>
+              <div class="pop-name" style="color:${vColor}">🚌 ${esc(v.bus_id)} 새 출발지</div>
+              <div class="pop-row">${esc(item.address)}</div>
               <div class="pop-row" style="color:#445566;font-size:10px">lat:${item.lat.toFixed(5)} lng:${item.lng.toFixed(5)}</div>
             </div>`);
           layerPreview.addLayer(m);
@@ -712,11 +754,13 @@ function startEdit(busId){
 async function saveEdit(busId){
   const v=S.vehicles.find(v=>v.bus_id===busId);
   if(!v)return;
-  const newCap=parseInt(document.getElementById(`eCap_${busId}`)?.value)||v.capacity;
-  const editSearchId=`ef_addr_${busId}`;
+  const newCap=parseInt(document.getElementById(`eCap_${domId(busId)}`)?.value)||v.capacity;
+  const editSearchId=`ef_addr_${domId(busId)}`;
   const as=S.addrSearches[editSearchId];
   const sel=as?.getValue();
 
+  if(!Number.isInteger(newCap)||newCap<1||newCap>200){toast('정원은 1~200명입니다.','warn');return;}
+  invalidateResults();
   v.capacity=newCap;
   if(sel){
     v.start_location=sel.address||(sel.name||v.start_location);
@@ -738,31 +782,31 @@ function renderVList(){
     const isE=S.editingId===v.bus_id;
     const hasCoord=v.start_lat&&v.start_lng;
     return `
-      <div class="v-item ${isE?'editing':''}" id="vi_${v.bus_id}">
+      <div class="v-item ${isE?'editing':''}" id="vi_${domId(v.bus_id)}">
         <div class="bus-dot" style="background:${c}"></div>
         <div class="v-info">
-          <div class="v-name">${v.bus_id} <span style="color:#445566;font-size:10px;font-weight:normal">${v.capacity}인승</span></div>
-          <div class="v-detail">📍 ${v.start_location} <span style="${hasCoord?'color:#22cc77':'color:#cc4466'}">${hasCoord?'✓':'미확인'}</span></div>
+          <div class="v-name">${esc(v.bus_id)} <span style="color:#445566;font-size:10px;font-weight:normal">${v.capacity}인승</span></div>
+          <div class="v-detail">📍 ${esc(v.start_location)} <span style="${hasCoord?'color:#22cc77':'color:#cc4466'}">${hasCoord?'✓':'미확인'}</span></div>
         </div>
         <div class="v-actions">
-          <button class="btn-edit" onclick="startEdit('${v.bus_id}')" title="수정">✏️</button>
-          <button class="btn-del"  onclick="removeVehicle('${v.bus_id}')" title="삭제">✕</button>
+          <button class="btn-edit" onclick="startEdit(S.vehicles[${i}].bus_id)" title="수정">✏️</button>
+          <button class="btn-del"  onclick="removeVehicle(S.vehicles[${i}].bus_id)" title="삭제">✕</button>
         </div>
       </div>
       ${isE?`
-      <div class="v-edit-form" id="ef_${v.bus_id}">
+      <div class="v-edit-form" id="ef_${domId(v.bus_id)}">
         <div style="margin-bottom:6px">
           <label style="font-size:11px;color:#8899bb;display:block;margin-bottom:3px">출발지 변경</label>
-          <div id="ef_addr_${v.bus_id}"></div>
+          <div id="ef_addr_${domId(v.bus_id)}"></div>
         </div>
         <div style="display:grid;grid-template-columns:80px 1fr;gap:6px;align-items:end;margin-bottom:8px">
           <div><label style="font-size:11px;color:#8899bb;display:block;margin-bottom:3px">정원(인)</label>
-          <input type="number" id="eCap_${v.bus_id}" value="${v.capacity}" min="1" style="width:100%;padding:6px 8px;background:#1a1a30;border:1px solid #333360;border-radius:6px;color:#e0e0e0;font-size:12px"></div>
+          <input type="number" id="eCap_${domId(v.bus_id)}" value="${v.capacity}" min="1" style="width:100%;padding:6px 8px;background:#1a1a30;border:1px solid #333360;border-radius:6px;color:#e0e0e0;font-size:12px"></div>
           <div></div>
         </div>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-success btn-xs" onclick="saveEdit('${v.bus_id}')">저장</button>
-          <button class="btn btn-outline btn-xs"  onclick="startEdit('${v.bus_id}')">취소</button>
+          <button class="btn btn-success btn-xs" onclick="saveEdit(S.vehicles[${i}].bus_id)">저장</button>
+          <button class="btn btn-outline btn-xs"  onclick="startEdit(S.vehicles[${i}].bus_id)">취소</button>
         </div>
       </div>`:''}`
   }).join('');
@@ -781,7 +825,7 @@ function renderVehicleMarkers(){
       className:''  // ★ 기본 className 제거 → 흰 정사각형 배경 제거
     });
     const m=L.marker([v.start_lat,v.start_lng],{icon})
-      .bindPopup(`<div><div class="pop-name" style="color:${color}">🚌 ${v.bus_id}</div><div class="pop-row">출발지: ${v.start_location}</div><div class="pop-row">정원: <b style="color:#ffbb44">${v.capacity}인승</b></div></div>`);
+      .bindPopup(`<div><div class="pop-name" style="color:${color}">🚌 ${esc(v.bus_id)}</div><div class="pop-row">출발지: ${esc(v.start_location)}</div><div class="pop-row">정원: <b style="color:#ffbb44">${v.capacity}인승</b></div></div>`);
     layerVehicle.addLayer(m);
   });
 }
@@ -792,6 +836,7 @@ function renderVehicleMarkers(){
 function initDestAddr(){
   new AddressSearch('destAddrWrap',{
     placeholder:'도착지 주소 또는 장소명',
+    onClear:()=>layerDest.clearLayers(),
     onSelect:item=>{
       layerDest.clearLayers();
       const icon=L.divIcon({
@@ -799,7 +844,7 @@ function initDestAddr(){
         iconSize:[36,36],iconAnchor:[18,18],className:''
       });
       const m=L.marker([item.lat,item.lng],{icon})
-        .bindPopup(`<div><div class="pop-name">🏁 도착지 (미리보기)</div><div class="pop-row">${item.address}</div></div>`);
+        .bindPopup(`<div><div class="pop-name">🏁 도착지 (미리보기)</div><div class="pop-row">${esc(item.address)}</div></div>`);
       layerDest.addLayer(m);m.openPopup();
       map.setView([item.lat,item.lng],13);
     }
@@ -810,6 +855,7 @@ function initDestAddr(){
 // 노선 생성
 // ═══════════════════════════════════════════════
 async function generateRoutes(){
+  if(S.failedRows){toast(`주소 확인 실패 ${S.failedRows}행이 있습니다. Excel 주소를 수정하고 다시 업로드해주세요.`,'error');return;}
   if(!S.passengers.length){toast('승객 데이터를 먼저 업로드하세요.','error');return;}
   if(!S.vehicles.length){toast('차량을 1대 이상 추가하세요.','error');return;}
 
@@ -820,13 +866,15 @@ async function generateRoutes(){
   const noCoord=S.vehicles.filter(v=>!v.start_lat||!v.start_lng);
   if(noCoord.length){toast(`좌표 미확인 차량: ${noCoord.map(v=>v.bus_id).join(', ')}\n출발지를 검색으로 설정해주세요.`,'warn');return;}
 
+  if(!document.getElementById('arrivalTime').value){toast('도착시간을 입력해주세요.','warn');return;}
   const totalPax=S.passengers.reduce((s,p)=>s+p.passenger_count,0);
   const totalCap=S.vehicles.reduce((s,v)=>s+v.capacity,0);
   if(totalPax>totalCap){toast(`⚠️ 총 승객(${totalPax}명) > 총 정원(${totalCap}명)`,'warn');return;}
 
+  invalidateResults();
   ['progPanel','resultPanel','detailPanel'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('progPanel').style.display='block';
-  renderStepList(STEPS);setProgress(5,'초기화...');
+  renderStepList([]);setProgress(5,'초기화...');
   document.getElementById('genBtn').disabled=true;
   showLov('최적 노선 계산 중...','OR-Tools VRP Solver');
 
@@ -837,24 +885,33 @@ async function generateRoutes(){
       arrival_time:document.getElementById('arrivalTime').value,
       destination:destSel.address||(destSel.name||''),
       destination_lat:destSel.lat,
-      destination_lng:destSel.lng
+      destination_lng:destSel.lng,
+      service_date:document.getElementById('serviceDate').value,
+      options:readOptions()
     };
 
-    setStep(0,'active');await sleep(200);
-    setStep(0,'done');setStep(1,'active');setProgress(20,'매트릭스 생성 중...');await sleep(150);
-    setStep(1,'done');setStep(2,'active');setProgress(40,'Solver 실행 중...');
-
-    const r=await fetch(`${API}/generate-route`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload),signal:AbortSignal.timeout(90000)
+    const submit=await fetch(`${API}/route-jobs`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(10000)
     });
-    const d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'노선 생성 실패');
-
-    setStep(2,'done');setStep(3,'active');setProgress(65,'도로 시간 정교화...');await sleep(200);
-    setStep(3,'done');setStep(4,'active');setProgress(80,'탑승시간 계산...');await sleep(150);
-    setStep(4,'done');setStep(5,'active');setProgress(90,'지도 렌더링...');
-
+    const accepted=await submit.json();
+    if(!submit.ok)throw new Error(errorText(accepted));
+    S.jobId=accepted.job_id;
+    document.getElementById('cancelJob').style.display='inline-flex';
+    let d;
+    for(;;){
+      await sleep(1000);
+      let status;
+      try {
+        const poll=await fetch(`${API}/route-jobs/${S.jobId}`,{signal:AbortSignal.timeout(10000)});
+        status=await poll.json();if(!poll.ok)throw new Error(errorText(status));
+      } catch(error) {throw new Error('진행 상태를 확인할 수 없습니다. 서버 계산은 계속될 수 있습니다. '+error.message);}
+      setProgress(status.percent,status.message);
+      document.getElementById('lovText').textContent=status.message;
+      if(status.status==='completed'){d=status.result;break;}
+      if(status.status==='failed'){S.jobId=null;throw new Error(errorText(status));}
+      if(status.status==='cancelled'){S.jobId=null;throw new Error('계산을 취소했습니다.');}
+    }
+    S.jobId=null;
     S.routes=d.routes;S.destination=d.destination;S.summary=d.summary;
 
     layerPax.clearLayers();layerVehicle.clearLayers();layerDest.clearLayers();
@@ -865,12 +922,13 @@ async function generateRoutes(){
     renderDetail(d.routes);
     renderRtabs(d.routes);
 
-    setStep(5,'done');setProgress(100,'완료!');
+    setProgress(100,'완료!');
     toast(`✅ ${d.routes.length}개 노선 생성\n총 ${d.summary.total_passengers}명`,'success');
   }catch(e){
     console.error('[노선생성 오류]',e);
+    setProgress(0,`계산 미완료: ${e.message}`);
     toast(`오류: ${e.message}`,'error');
-  }finally{hideLov();document.getElementById('genBtn').disabled=false;}
+  }finally{if(S.jobId)cancelRouteJob();hideLov();document.getElementById('genBtn').disabled=false;document.getElementById('cancelJob').style.display=S.jobId?'inline-flex':'none';}
 }
 
 // ═══════════════════════════════════════════════
@@ -890,7 +948,7 @@ function renderRouteMap(data){
     L.marker([dest.lat,dest.lng],{icon:destIcon})
       .bindPopup(`<div>
         <div class="pop-name">🏁 도착지</div>
-        <div class="pop-row">${dest.address}</div>
+        <div class="pop-row">${esc(dest.address)}</div>
         <div class="pop-time">⏰ ${dest.arrival_time}</div>
         <div class="pop-row" style="font-size:10px;color:${hasOSRM?'#22cc77':'#ffaa33'}">
           ${hasOSRM?'✅ 실제 도로 경로':'⚠ 직선 경로 (OSRM 미설정)'}
@@ -916,10 +974,10 @@ function renderRouteMap(data){
       });
       L.marker([lat,lng],{icon})
         .bindPopup(`<div>
-          <div class="pop-bus" style="background:${color}">${route.bus_id}</div>
-          <div class="pop-name">👤 ${stop.name}</div>
-          <div class="pop-row">${stop.address}</div>
-          <div class="pop-time">⏰ ${stop.pickup_time||'-'}</div>
+          <div class="pop-bus" style="background:${color}">${esc(route.bus_id)}</div>
+          <div class="pop-name">👤 ${esc(stop.name)}</div>
+          <div class="pop-row">${esc(stop.address)}</div>
+          <div class="pop-time">⏰ ${displayTime(stop.pickup_time||'-',stop.day_offset)}</div>
           <div class="pop-row">탑승: <b style="color:#ffbb44">${stop.passenger_count}명</b></div>
         </div>`)
         .addTo(layerStop);
@@ -930,10 +988,10 @@ function renderRouteMap(data){
 
     if(polylines && polylines.length > 0){
       // OSRM 실제 도로: 구간별로 개별 Polyline
-      polylines.forEach(segCoords=>{
+      polylines.forEach((segCoords,segIndex)=>{
         if(!segCoords || segCoords.length < 2) return;
         const line = L.polyline(segCoords,{
-          color, weight:3.5, opacity:0.85,
+          color, weight:3.5, opacity:0.85, dashArray:route.polyline_sources?.[segIndex]==='estimated'?'8,5':null,
           lineCap:'round', lineJoin:'round', smoothFactor:1
         });
         layerRoute.addLayer(line);
@@ -984,7 +1042,7 @@ function renderRtabs(routes){
     ${routes.map((r,i)=>`
       <div class="rtab" onclick="filterTab(${i},this)" style="border-color:${COLORS[i%COLORS.length]}44">
         <span style="color:${COLORS[i%COLORS.length]}">●</span>
-        ${r.bus_id} — ${r.total_passengers}명 / ${r.departure_time} 출발
+        ${esc(r.bus_id)} — ${r.total_passengers}명 / ${displayTime(r.departure_time,r.departure_day_offset)} 출발
       </div>`).join('')}`;
 }
 function filterTab(idx,el){
@@ -998,7 +1056,9 @@ function filterTab(idx,el){
 // ═══════════════════════════════════════════════
 function renderResultPanel(data){
   document.getElementById('resultPanel').style.display='block';
-  const dep=data.routes.reduce((m,r)=>(!m||r.departure_time<m)?r.departure_time:m,'');
+  const earliest=[...data.routes].sort((a,b)=>a.departure_datetime.localeCompare(b.departure_datetime))[0];
+  const dep=earliest?displayTime(earliest.departure_time,earliest.departure_day_offset):'';
+  document.getElementById('resultNotes').textContent=[`평균 탑승 ${data.summary.average_ride_min}분 · 최장 ${data.summary.max_ride_min}분`,`운행 ${data.summary.total_buses}/${data.summary.available_buses}대 · 미배정 0명`, '제한 시간 내 찾은 해입니다. 전역 최적해를 보장하지 않습니다.',...(data.warnings||[])].join('\n');
   document.getElementById('sumGrid').innerHTML=`
     <div class="sum-card"><div class="sum-val" style="color:#22cc77">${data.summary.total_passengers}</div><div class="sum-lbl">총 탑승객</div></div>
     <div class="sum-card"><div class="sum-val">${data.summary.total_buses}</div><div class="sum-lbl">운행 버스</div></div>
@@ -1013,16 +1073,16 @@ function renderDetail(routes){
     const pickups=r.stops.filter(s=>s.type==='pickup');
     return `<div style="margin-bottom:10px;border:1px solid ${c}33;border-radius:8px;overflow:hidden">
       <div style="background:${c}22;padding:6px 10px;display:flex;align-items:center;justify-content:space-between">
-        <span style="color:${c};font-weight:bold;font-size:12px">🚌 ${r.bus_id}</span>
-        <span style="font-size:10px;color:#8899bb">${r.departure_time}→${r.arrival_time} | ${r.total_duration_min||0}분 | ${r.total_passengers}명</span>
+        <span style="color:${c};font-weight:bold;font-size:12px">🚌 ${esc(r.bus_id)}</span>
+        <span style="font-size:10px;color:#8899bb">${displayTime(r.departure_time,r.departure_day_offset)}→${r.arrival_time} | ${r.total_duration_min||0}분 | ${r.total_passengers}명</span>
       </div>
       ${pickups.length===0?`<div style="padding:8px 12px;font-size:11px;color:#556677">배정된 승객 없음</div>`:''}
       ${pickups.map((s,si)=>`
         <div style="display:flex;align-items:center;padding:4px 10px;gap:8px;font-size:11px;border-bottom:1px solid #151525">
           <span style="background:${c};color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${si+1}</span>
-          <span style="flex:1;color:#ccddee">${s.name}</span>
-          <span style="color:#778899;flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.address}</span>
-          <span style="color:#44dd88;font-weight:bold;flex-shrink:0">${s.pickup_time||'-'}</span>
+          <span style="flex:1;color:#ccddee">${esc(s.name)}</span>
+          <span style="color:#778899;flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.address)}</span>
+          <span style="color:#44dd88;font-weight:bold;flex-shrink:0">${displayTime(s.pickup_time||'-',s.day_offset)}</span>
           <span style="color:#ffbb44;flex-shrink:0">${s.passenger_count}명</span>
         </div>`).join('')}
       <div style="display:flex;align-items:center;padding:4px 10px;gap:8px;font-size:11px;background:#1a1a30">
@@ -1037,6 +1097,12 @@ function renderDetail(routes){
 // ═══════════════════════════════════════════════
 // Excel Export
 // ═══════════════════════════════════════════════
+async function cancelRouteJob(){
+  if(!S.jobId)return;
+  try{await fetch(`${API}/route-jobs/${S.jobId}`,{method:'DELETE'});toast('취소 요청됨. 현재 계산 단계가 끝나면 중단합니다.','info');}
+  catch(e){toast('취소 요청을 보내지 못했습니다.','error');}
+}
+
 async function exportExcel(){
   if(!S.routes){toast('노선을 먼저 생성하세요.','warn');return;}
   showLov('Excel 생성 중...','3시트 작성');
@@ -1047,7 +1113,7 @@ async function exportExcel(){
     const today=new Date().toLocaleDateString('ko-KR').replace(/\.\s*/g,'-').replace(/-$/,'');
     const res=await ipc.invoke('save-file',{defaultName:`DaOnRoad_${today}.xlsx`,data:uint8});
     if(res?.success)toast(`✅ 저장 완료\n${res.path}`,'success');
-  }catch(e){toast(`Export 오류: ${e.message}`,'error');}
+  }catch(e){toast(`Export 오류: ${esc(e.message)}`,'error');}
   finally{hideLov();}
 }
 
@@ -1063,7 +1129,7 @@ function toast(msg,type='info'){const el=document.createElement('div');el.classN
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 function resetAll(){
-  Object.assign(S,{passengers:[],vehicles:[],routes:null,destination:null,summary:null,editingId:null});
+  Object.assign(S,{passengers:[],vehicles:[],routes:null,destination:null,summary:null,editingId:null,failedRows:0});
   [layerPax,layerVehicle,layerDest,layerRoute,layerStop,layerPreview].forEach(l=>l.clearLayers());
   ML.lines=[];
   map.setView([37.5665,126.9780],10);
@@ -1082,6 +1148,16 @@ function resetAll(){
 // ═══════════════════════════════════════════════
 initAddFormAddr();
 initDestAddr();
+function readOptions(){
+ return {max_ride_min:Number(document.getElementById('maxRide').value),max_route_min:Number(document.getElementById('maxRoute').value),boarding_sec:Number(document.getElementById('boarding').value),passenger_time_weight:Number(document.getElementById('rideWeight').value),vehicle_fixed_cost_min:Number(document.getElementById('fixedCost').value),travel_time_factor:Number(document.getElementById('travelFactor').value),search_seconds:Number(document.getElementById('searchSeconds').value),use_all_vehicles:document.getElementById('allVehicles').checked,allow_estimated:document.getElementById('allowEstimated').checked};
+}
+function invalidateResults(){
+ S.routes=null;S.destination=null;S.summary=null;
+ ['resultPanel','detailPanel','routePanel'].forEach(id=>document.getElementById(id).style.display='none');
+ layerRoute.clearLayers();layerStop.clearLayers();ML.lines=[];window._routeAlerted=false;
+}
+const today=new Date();document.getElementById('serviceDate').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+['arrivalTime','serviceDate','maxRide','maxRoute','boarding','rideWeight','fixedCost','travelFactor','searchSeconds','allVehicles','allowEstimated'].forEach(id=>document.getElementById(id).addEventListener('input',invalidateResults));
 // 초기 데모 차량 (좌표 없음 — API 키 설정 후 사용자가 직접 검색)
 S.vehicles=[];
 renderVList();

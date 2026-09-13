@@ -1,0 +1,24 @@
+{
+  "scenario": "500 synthetic pickups; compact spread .15; same matrix; 120 sec boarding; 20-second search",
+  "caveat": "Not real metro roads. Legacy solver is evaluated on the corrected node layout.",
+  "old": {
+    "assigned_groups": 500,
+    "unique_groups": 500,
+    "used_buses": 20,
+    "max_ride_min": 131.67,
+    "average_ride_min": 47.36,
+    "total_vehicle_min": 1400.17,
+    "over_90_min_groups": 61,
+    "capacity_violations": 0
+  },
+  "new": {
+    "assigned_groups": 500,
+    "unique_groups": 500,
+    "used_buses": 20,
+    "max_ride_min": 81.52,
+    "average_ride_min": 36.07,
+    "total_vehicle_min": 1391.1,
+    "over_90_min_groups": 0,
+    "capacity_violations": 0
+  }
+}

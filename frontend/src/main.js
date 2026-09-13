@@ -13,7 +13,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path  = require('path');
 const fs    = require('fs');
-const { spawn, execSync, spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const IS_DEV   = process.argv.includes('--dev');
 const API_PORT = 8000;
@@ -47,7 +47,7 @@ function getProjectRoot() {
 // ─────────────────────────────────────────────────────────────────
 function isDockerAvailable() {
   try {
-    const result = spawnSync('docker', ['info'], { stdio: 'ignore', timeout: 5000 });
+    const result = spawnSync('docker', ['info'], { stdio: 'ignore', windowsHide: true, timeout: 5000 });
     return result.status === 0;
   } catch {
     return false;
@@ -61,11 +61,11 @@ function isDockerAvailable() {
 // ─────────────────────────────────────────────────────────────────
 function getComposeCmd() {
   // V2: docker compose
-  const v2 = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore', timeout: 3000 });
+  const v2 = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore', windowsHide: true, timeout: 3000 });
   if (v2.status === 0) return { cmd: 'docker', args: ['compose'] };
 
   // V1: docker-compose
-  const v1 = spawnSync('docker-compose', ['version'], { stdio: 'ignore', timeout: 3000 });
+  const v1 = spawnSync('docker-compose', ['version'], { stdio: 'ignore', windowsHide: true, timeout: 3000 });
   if (v1.status === 0) return { cmd: 'docker-compose', args: [] };
 
   return null;
@@ -133,7 +133,10 @@ async function waitForBackend(retries = 120, interval = 1000) {
   for (let i = 0; i < retries; i++) {
     const ok = await new Promise(resolve => {
       const req = http.get(`${BACKEND_URL}/health`, res => {
-        resolve(res.statusCode === 200);
+        let body='';
+        res.on('data',chunk=>{body+=chunk;if(body.length>65536)res.destroy();});
+        res.on('end',()=>{try{resolve(res.statusCode===200 && JSON.parse(body).routing_jobs===true);}catch{resolve(false);}});
+        res.on('error',()=>resolve(false));
       });
       req.on('error', () => resolve(false));
       req.setTimeout(800, () => { req.destroy(); resolve(false); });
@@ -199,9 +202,11 @@ function createWindow() {
     width: 1440, height: 900,
     minWidth: 1100, minHeight: 700,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false,
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
     },
     title: 'DaOnRoad',
     backgroundColor: '#0f0f1a',
@@ -209,6 +214,9 @@ function createWindow() {
     ...(iconExists ? { icon: iconPath } : {}),
   });
 
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', event => event.preventDefault());
+  mainWindow.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
   if (IS_DEV) mainWindow.webContents.openDevTools();
@@ -249,6 +257,7 @@ app.on('window-all-closed', () => {
     spawnSync(stopCompose.cmd, [...stopCompose.args, 'stop'], {
       cwd: projectRoot,
       stdio: 'ignore',
+      windowsHide: true,
       timeout: 10000,
     });
   }
@@ -256,13 +265,16 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) { createWindow(); startDockerCompose(); }
 });
 
 // ─────────────────────────────────────────────────────────────────
 // IPC 핸들러
 // ─────────────────────────────────────────────────────────────────
 ipcMain.handle('save-file', async (event, { defaultName, data }) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error('Invalid sender');
+  if (!Array.isArray(data) || data.length > 20 * 1024 * 1024 || !data.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) throw new Error('Invalid file data');
+  defaultName = path.basename(String(defaultName || 'DaOnRoad.xlsx')).replace(/[<>:"/\\|?*]/g, '_');
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
     defaultPath: defaultName,
     filters: [{ name: 'Excel Files', extensions: ['xlsx'] }],
@@ -270,28 +282,4 @@ ipcMain.handle('save-file', async (event, { defaultName, data }) => {
   if (canceled || !filePath) return { success: false };
   fs.writeFileSync(filePath, Buffer.from(data));
   return { success: true, path: filePath };
-});
-
-ipcMain.handle('open-file', async () => {
-  const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
-    filters: [{ name: 'Excel Files', extensions: ['xlsx', 'xls'] }],
-    properties: ['openFile'],
-  });
-  return canceled ? null : (filePaths[0] || null);
-});
-
-ipcMain.handle('get-api-port', () => API_PORT);
-
-// 컨테이너 상태 조회 (UI에서 사용 가능)
-ipcMain.handle('get-docker-status', () => {
-  const result = spawnSync('docker', ['compose', 'ps', '--format', 'json'], {
-    cwd: getProjectRoot(),
-    stdio: 'pipe',
-    timeout: 5000,
-  });
-  try {
-    return JSON.parse(result.stdout.toString());
-  } catch {
-    return [];
-  }
 });

@@ -1,325 +1,100 @@
-# 🚌 DaOnRoad — 버스 노선 최적화 시스템
+# DaOnRoad — 학원 통학 배차
 
-승객 탑승지 정보를 입력하면 최적 버스 노선을 자동으로 생성합니다.
+학생 Excel과 차량 출발지를 입력하면, 공통 도착지까지의 배차·방문 순서·시간표를 계산하고 지도와 Excel로 출력합니다.
 
----
+## 현재 배차 기준
 
-## 목차
+- 모든 입력 행을 정확히 한 번 배정하며 차량 정원을 초과하지 않습니다.
+- 학생 탑승시간은 **탑승 대기 시작부터 학원 도착까지**입니다. 기본 상한은 90분입니다.
+- 기본 탑승 대기는 Excel **행당 120초**입니다. 같은 주소 여러 행도 각각 계산합니다.
+- 한 행의 여러 인원은 함께 이동하며 분할하지 않습니다.
+- 등록 차량 중 필요한 차량을 선택합니다. 화면에서 전체 차량 사용도 선택할 수 있습니다.
+- 비용 지표는 `총 차량 운행시간 + 사용 차량 수 × 30분 + 학생별 탑승시간 합계 × 0.2`입니다. 실제 원화 비용이 아니며 가중치를 조정할 수 있습니다.
+- 차량 운행시간에는 출발지→첫 탑승지 이동이 포함됩니다. 기본 차량 운행 상한은 240분입니다.
+- 기본 탐색시간은 60초, 최대 180초입니다. 제한 시간 안에 찾은 실행 가능한 해이며 전역 최적해를 보장하지 않습니다.
+- 조건을 만족하는 해를 찾지 못하면 누락·초과 배차를 반환하지 않습니다. 시간 초과와 수학적으로 불가능한 조건은 구분해야 합니다.
 
-- [👤 사용자 가이드](#-사용자-가이드)
-- [👨‍💻 관리자 가이드](#-관리자-가이드)
+500명·21인승 10대·35인승 5대·45인승 5대는 610석입니다. 좌석 합계만으로 90분 이내 배차가 가능하다는 뜻은 아닙니다. 실제 출발지·학생 분포·도로 시간에 따라 결과가 달라집니다.
 
----
+[알고리즘과 검증 결과](docs/UPGRADE_NOTES.md), [초기 분석 기록](docs/PROJECT_ANALYSIS.md)
 
-# 👤 사용자 가이드
+## 준비
 
-## 사전 준비 (최초 1회)
+- Windows: Docker Desktop, Node.js **22.12 이상**. Python은 Docker 실행 시 필요 없습니다.
+- `frontend`에서 `npm ci` 실행. 지도 라이브러리는 앱에 포함되며 인터넷 CDN 스크립트를 불러오지 않습니다.
+- `backend/.env.example`을 `backend/.env`로 복사하고 `KAKAO_API_KEY`를 설정합니다. 기존 로컬 `.env`는 그대로 사용할 수 있습니다.
+- `osrm-data/`에는 한국 지도 MLD 전처리 결과가 필요합니다. 기존 파일은 그대로 사용 가능합니다.
 
-### 1. Docker Desktop 설치
+주소 검색은 Kakao/Tmap, 지도 배경 타일은 OpenStreetMap에 연결합니다. 완전한 오프라인 프로그램은 아닙니다. 도로 시간은 로컬 OSRM에서 얻으며 실시간 교통·버스 통행 규제까지 반영하는 것은 아닙니다. 화면의 이동시간 여유 배수로 보수적인 시간 계산을 설정할 수 있습니다.
 
-[docker.com/get-started](https://www.docker.com/get-started) 에서 설치.  
-설치 후 실행 → 트레이 아이콘이 **초록색**이 될 때까지 대기.
+## 개발 실행
 
-### 2. DaOnRoad.zip 압축 해제
+프로젝트 루트에서:
 
-관리자로부터 받은 `DaOnRoad.zip`을 원하는 폴더에 압축 해제합니다.
-
-```
-DaOnRoad\               ← 압축 해제된 폴더
-├── DaOnRoad.exe        ← 실행 파일
-├── resources\
-│   ├── backend\        ← 백엔드 서버
-│   ├── osrm-data\      ← 도로 지도 데이터
-│   └── docker-compose.yml
-└── ...
-```
-
----
-
-## 매일 실행
-
-1. **Docker Desktop** 실행 → 트레이 아이콘 초록색 확인
-2. **DaOnRoad.exe** 더블클릭
-3. 앱 헤더에 **✅ 연결됨** 표시 확인 (첫 실행 시 1~2분 소요)
-
-> 첫 실행은 Docker 이미지를 빌드하므로 수 분 소요됩니다.  
-> 이후 실행부터는 30초 내외로 빠르게 시작됩니다.
-
----
-
-## 앱 사용법
-
-### STEP 1 — 승객 데이터 업로드
-
-Excel 파일 형식:
-
-| name | address | passenger_count |
-|------|---------|----------------|
-| 홍길동 | 서울 강남구 역삼동 | 1 |
-| 김철수 | 인천 연수구 송도동 | 2 |
-
-- 한글 컬럼명도 자동 인식 (이름/주소/인원)
-- `.xlsx`, `.xls` 모두 지원
-
-사이드바 **Step 1** 영역에 파일을 드래그하거나 클릭해서 업로드합니다.
-
----
-
-### STEP 2 — 차량 설정
-
-1. 버스 ID, 정원 입력
-2. 출발지 입력 후 **✅ 확인** 클릭 → 검색 결과에서 정확한 위치 선택
-3. 지도에서 위치 확인
-4. **+ 차량 추가** 클릭
-
-수정: 등록된 차량 우측 ✏️ → 출발지/정원 수정 → **저장**
-
----
-
-### STEP 3 — 노선 생성
-
-1. 도착지 입력 → **✅ 확인** → 위치 선택
-2. 도착 목표시간 설정 (예: 10:00)
-3. **🚀 최적 노선 생성** 클릭
-
-결과 확인:
-
-| 항목 | 위치 |
-|------|------|
-| 버스 수, 출발시간 요약 | 사이드바 결과 요약 |
-| 버스별 탑승자/탑승시간 | 사이드바 노선 상세 |
-| 지도 시각화 | 메인 화면 |
-| 버스별 필터 | 지도 하단 탭 |
-
----
-
-### STEP 4 — Excel 저장
-
-**📥 Excel 저장** 클릭 → 저장 위치 선택
-
-| 시트 | 내용 |
-|------|------|
-| Bus Summary | 버스별 출발/도착시간, 소요시간, 탑승인원 |
-| Route Detail | 정류장 순서, 탑승지, 탑승시간 |
-| Passenger | 승객별 배정 버스, 탑승지, 탑승시간 |
-
----
-
-## 문제 해결
-
-### "백엔드 연결 실패" 표시
-
-→ Docker Desktop이 실행 중인지 확인 (트레이 아이콘 초록색)  
-→ 앱 헤더의 **재연결** 버튼 클릭
-
-### 주소 검색 결과 없음
-
-→ 관리자에게 문의 (API 키 설정 문제)
-
-### 노선이 직선으로 표시
-
-→ 정상 동작입니다. 실제 도로 경로는 설정에 따라 다를 수 있습니다.
-
----
-
----
-
-# 👨‍💻 관리자 가이드
-
-## 시스템 구조
-
-```
-사용자
-  │
-  ▼
-DaOnRoad.exe (Electron UI)
-  │
-  │  docker compose up
-  ▼
-┌──────────────────────────────┐
-│  Docker                       │
-│  ┌─────────────────┐         │
-│  │ FastAPI 백엔드   │ :8000   │
-│  │ - 노선 최적화    │         │
-│  │ - Kakao 주소검색 │         │
-│  │ - Excel 출력     │         │
-│  └────────┬────────┘         │
-│           │                   │
-│  ┌────────▼────────┐         │
-│  │ OSRM 서버        │ :5001   │
-│  │ (실제 도로 경로)  │         │
-│  └─────────────────┘         │
-└──────────────────────────────┘
-```
-
----
-
-## 개발 환경 구성 (최초 1회)
-
-### 사전 준비물
-
-| 도구 | 설치 |
-|------|------|
-| Docker Desktop | [docker.com](https://www.docker.com/get-started) |
-| Node.js 18+ | [nodejs.org](https://nodejs.org/) |
-| Git | [git-scm.com](https://git-scm.com/) |
-
-> Python은 불필요합니다. Docker 컨테이너 안에서 실행됩니다.
-
-### 저장소 클론
-
-```cmd
-git clone https://github.com/jhgf9630/DaOnRoad.git
-cd DaOnRoad
-```
-
-### Kakao API 키 발급
-
-1. [developers.kakao.com](https://developers.kakao.com) → 로그인 → 애플리케이션 추가
-2. **앱 키 → REST API 키** 복사
-3. ⚠️ **제품 설정 → 카카오맵 → 사용 설정 ON** (필수)
-
-### .env 파일 생성
-
-```
-backend\.env 내용:
-
-KAKAO_API_KEY=발급받은_REST_API_키
-```
-
-### Node.js 패키지 설치
-
-```cmd
-cd frontend
-npm install
-cd ..
-```
-
-### OSRM 도로 데이터 구축 (최초 1회, 약 30분)
-
-```cmd
-mkdir osrm-data
-cd osrm-data
-curl -O https://download.geofabrik.de/asia/south-korea-latest.osm.pbf
-```
-
-전처리 (osrm-data 폴더 안에서 실행):
-
-```cmd
-docker run -t -v "%cd%:/data" osrm/osrm-backend:latest osrm-extract -p /opt/car.lua /data/south-korea-latest.osm.pbf
-docker run -t -v "%cd%:/data" osrm/osrm-backend:latest osrm-partition /data/south-korea-latest.osrm
-docker run -t -v "%cd%:/data" osrm/osrm-backend:latest osrm-customize /data/south-korea-latest.osrm
-cd ..
-```
-
----
-
-## 개발 환경 실행
-
-```cmd
-rem Docker 백엔드 시작
-start.bat
-
-rem Electron UI 실행 (별도 터미널)
+```powershell
+docker compose up -d --build
 cd frontend
 npm start
 ```
 
-코드 수정 후 반영:
-```cmd
-rem backend 코드 변경 시
-docker compose up -d --build
+Electron도 시작 시 Compose를 실행합니다. 백엔드는 `127.0.0.1:8000`, 도로 서버는 `127.0.0.1:5001`에 바인딩됩니다. 같은 포트를 사용하는 예전 배포본이 실행 중이면 먼저 그 앱을 종료한 후 실행하세요. 앱 종료 시 해당 Compose 프로젝트의 컨테이너를 중지합니다.
 
-rem frontend 코드 변경 시
-npm start 재실행
+`/health`는 프로세스 상태, `/ready`는 실제 OSRM 연결 상태를 확인합니다. OSRM이 준비되지 않았거나 실패하면 노선 생성이 명확한 오류를 표시합니다. **직선 추정 허용**을 사용자가 선택한 경우에만 추정 시간으로 계산합니다.
+
+## 사용
+
+1. Excel 업로드: `.xlsx` 또는 `.xls`, 최대 10MB·1,000행.
+2. 차량 ID·정원·출발지를 등록합니다. 주소 검색 후 후보를 선택하세요.
+3. 공통 도착지·운행일·도착시간을 설정하고 배차 조건을 확인합니다.
+4. 노선을 생성합니다. 실제 처리 단계와 진행 상태가 표시됩니다. 계산 취소는 현재 계산 단계가 끝날 때 반영됩니다.
+5. 차량별 출발시간, 첫 탑승시간, 학생 탑승시간, 평균·최장 탑승시간을 확인합니다.
+6. Excel 저장: Bus Summary / Route Detail / Passenger 3개 시트.
+
+| name | address | passenger_count |
+|---|---|---|
+| 예시 학생 | 서울 강남구 ... | 1 |
+
+한글 이름/성명, 주소/탑승지, 인원/탑승인원/명 컬럼도 인식합니다. 인원은 양의 정수이며 누락·소수·음수는 허용하지 않습니다. 좌표를 찾지 못한 행이 있으면 Excel 주소를 수정한 후 다시 업로드해야 합니다. 실패 행을 제외한 채 자동 배차하지 않습니다.
+
+주소·차량·운행 조건을 바꾸면 기존 결과가 무효화되므로 다시 생성해야 합니다. 전날 출발은 지도·요약·Excel에서 구분합니다. 계산 중 화면 요청이 끊기면 취소를 시도하지만 서버가 잠시 계산을 계속할 수 있습니다.
+
+## 배포
+
+Windows는 프로젝트 루트에서 `build.bat`을 실행합니다.
+
+- 배포 대상은 `dist/DaOnRoad.zip` 또는 `dist/win-unpacked/` 폴더입니다.
+- backend/Dockerfile·환경설정 예시·지도 데이터가 함께 있어야 합니다.
+- 개발자의 API 키는 포함하지 않습니다. 설치별로 `resources/backend/.env`를 설정하세요.
+- 별도 portable exe 하나에는 나중에 복사된 지도 데이터가 들어 있지 않으므로 단독 배포하지 마세요.
+- Mac 빌드 스크립트 이름 오류는 수정했지만 Mac 실행/패키징은 별도 검증이 필요합니다.
+
+기존 `dist/` 실행파일은 소스 수정만으로 갱신되지 않습니다. 이번 검증용 Windows 패키지는 `dist-validation/win-unpacked/`에 있으며 지도·사용자 키를 포함하지 않는 검증 산출물입니다.
+
+## 테스트
+
+프로젝트 루트에서 가상환경을 만든 후:
+
+```powershell
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r backend/requirements.txt -r requirements-dev.txt
+.venv/Scripts/python.exe -m pytest tests -q
+cd frontend
+npm ci
+npm test
 ```
 
----
+500명 합성 사례 재현:
 
-## 배포 (사용자에게 전달)
-
-### build.bat 실행
-
-```cmd
-cd DaOnRoad
-build.bat
+```powershell
+.venv/Scripts/python.exe scripts/benchmark_routing.py --students 500 --seconds 60
 ```
 
-빌드 스크립트가 자동으로:
-1. Electron 앱 빌드
-2. `osrm-data/` 포함
-3. `backend/.env` 포함
-4. `dist\DaOnRoad.zip` 생성
+`--spread`는 합성 지리 범위를 조절합니다. 합성 행렬 테스트는 실제 수도권 도로의 운행 가능성을 검증하는 자료가 아닙니다. 로컬 OSRM이 5001번 포트에서 실행 중이면 `scripts/validate_road.py`로 가상 좌표 12명의 도로·Excel 연동을 확인할 수 있습니다.
 
-### 사용자에게 전달
+## 운영 메모
 
-```
-dist\DaOnRoad.zip    ← 이것만 전달
-```
-
-ZIP 안에 모든 것이 포함되어 있습니다:
-- 앱 실행파일 (`DaOnRoad.exe`)
-- 백엔드 서버 코드
-- 도로 지도 데이터 (`osrm-data/`)
-- API 키 설정 (`.env`)
-
-### 사용자 설치 방법 (전달용)
-
-```
-1. Docker Desktop 설치
-   https://www.docker.com/get-started
-
-2. DaOnRoad.zip 압축 해제
-
-3. DaOnRoad.exe 실행
-```
-
----
-
-## Docker 관리 명령어
-
-```cmd
-rem 상태 확인
-docker compose ps
-
-rem 로그 확인
-docker compose logs -f
-
-rem 재시작
-docker compose restart
-
-rem 전체 재빌드 (코드 변경 후)
-docker compose up -d --build
-
-rem 종료
-docker compose down
-```
-
----
-
-## 프로젝트 구조
-
-```
-DaOnRoad/
-├── backend/                  Python FastAPI 서버
-│   ├── .env                  API 키 (Git 미포함, 직접 생성)
-│   ├── .env.example          .env 양식
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── main.py
-│   ├── api/                  라우터
-│   ├── routing/              거리 계산, 지오코딩, OSRM
-│   ├── solver/               VRP 최적화
-│   ├── scheduler/            탑승시간 역산
-│   └── export/               Excel 출력
-├── frontend/                 Electron 앱
-│   ├── index.html            메인 UI
-│   ├── package.json
-│   └── src/main.js           Electron 메인 프로세스
-├── osrm-data/                OSRM 지도 데이터 (Git 미포함)
-├── docker-compose.yml
-├── start.bat                 개발 환경 시작 (Windows)
-├── start.sh                  개발 환경 시작 (Mac/Linux)
-├── build.bat                 배포 패키지 빌드
-└── build.sh                  배포 패키지 빌드 (Mac/Linux)
-```
+- 주소 캐시·API 키·지도 원본·컴파일 파일은 Git 추적에서 제외합니다. 이미 과거 커밋에 들어간 키는 추적 해제만으로 삭제되지 않습니다. 외부 공유된 적이 있다면 발급처에서 키 교체가 필요합니다.
+- 결과는 화면 메모리와 일시적인 서버 작업에만 보관합니다. 작업 기록은 조회/생성 시 1시간 경과 항목을 정리하고 완료 작업을 최대 5개 유지합니다. 재시작하면 사라집니다.
+- 현재 작업/JSON 캐시는 단일 백엔드 프로세스용입니다. uvicorn worker를 여러 개로 늘리려면 공유 작업 저장소·프로세스 간 캐시 제어가 필요합니다.
+- 캐시는 7일 만료이며 지도 데이터를 교체할 때 `OSRM_DATA_VERSION`도 변경하세요.
+- API는 앱 전용 헤더와 출처 검사를 사용합니다. 인터넷 공개 서버용 인증 체계는 아니므로 로컬 바인딩을 유지하세요.

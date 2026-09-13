@@ -1,49 +1,57 @@
-"""
-Distance Matrix 캐시 모듈
-distance_cache.json에 저장/로드
-"""
+"""Thread-safe shared JSON caches with expiry and atomic writes (single worker process)."""
 import json
 import os
-from typing import Any, Optional
+import tempfile
+import threading
+import time
+from pathlib import Path
 
-CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'cache')
+CACHE_DIR = os.environ.get('DAONROAD_CACHE_DIR', str(Path(__file__).resolve().parent.parent / 'cache'))
+_registry = {}
+_registry_lock = threading.Lock()
 
 
 class DistanceCache:
-    def __init__(self, cache_file: str = "distance_cache.json"):
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        self.cache_path = os.path.join(CACHE_DIR, cache_file)
-        self._data = self._load()
-
-    def _load(self) -> dict:
-        if os.path.exists(self.cache_path):
-            try:
-                with open(self.cache_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception:
-                return {}
-        return {}
+    def __init__(self, cache_file='distance_cache.json'):
+        self.cache_path = str(Path(CACHE_DIR).resolve() / cache_file)
+        Path(self.cache_path).parent.mkdir(parents=True, exist_ok=True)
+        with _registry_lock:
+            if self.cache_path not in _registry:
+                try:
+                    raw = json.loads(Path(self.cache_path).read_text(encoding='utf-8'))
+                    data = raw.get('entries', {}) if raw.get('version') == 2 else {}
+                except (OSError, ValueError, AttributeError):
+                    data = {}
+                _registry[self.cache_path] = (threading.RLock(), data)
+            self._lock, self._data = _registry[self.cache_path]
 
     def _save(self):
-        with open(self.cache_path, 'w', encoding='utf-8') as f:
-            json.dump(self._data, f, ensure_ascii=False, indent=2)
+        now = time.time()
+        for key in list(self._data):
+            if self._data[key]['expires'] <= now:
+                del self._data[key]
+        fd, temporary = tempfile.mkstemp(dir=str(Path(self.cache_path).parent), suffix='.tmp')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+                json.dump({'version': 2, 'entries': self._data}, stream, ensure_ascii=False)
+            os.replace(temporary, self.cache_path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
-    def get(self, key: str) -> Optional[Any]:
-        return self._data.get(key)
+    def get(self, key):
+        with self._lock:
+            entry = self._data.get(key)
+            if entry and entry['expires'] > time.time():
+                return entry['value']
+            return None
 
-    def set(self, key: str, value: Any):
-        self._data[key] = value
-        self._save()
-
-    def get_route_time(self, from_lat: float, from_lng: float, to_lat: float, to_lng: float) -> Optional[int]:
-        key = f"route:{from_lat:.5f},{from_lng:.5f}:{to_lat:.5f},{to_lng:.5f}"
-        return self._data.get(key)
-
-    def set_route_time(self, from_lat: float, from_lng: float, to_lat: float, to_lng: float, seconds: int):
-        key = f"route:{from_lat:.5f},{from_lng:.5f}:{to_lat:.5f},{to_lng:.5f}"
-        self._data[key] = seconds
-        self._save()
+    def set(self, key, value, ttl=7 * 86400):
+        with self._lock:
+            self._data[key] = {'value': value, 'expires': time.time() + ttl}
+            self._save()
 
     def clear(self):
-        self._data = {}
-        self._save()
+        with self._lock:
+            self._data.clear()
+            self._save()

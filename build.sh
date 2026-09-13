@@ -25,7 +25,7 @@ npm install
 
 echo ""
 echo "[2/3] Building Electron package..."
-npm run build:mac   # Mac용. Windows는 npm run build:win
+npm run buildmac   # Mac용. Windows는 npm run buildwin
 
 cd ..
 
